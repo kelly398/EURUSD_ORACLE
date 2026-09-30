@@ -8,6 +8,8 @@ from backend.data_engine.tick_model import MarketTick
 
 from backend.data_engine.validator import TickValidator
 
+from backend.data_engine.storage import TickStorage
+
 
 
 class TickCollector:
@@ -18,6 +20,8 @@ class TickCollector:
         self.provider = MT5Provider()
 
         self.validator = TickValidator()
+
+        self.storage = TickStorage()
 
 
 
@@ -65,9 +69,11 @@ class TickCollector:
 
 
                 if self.validator.validate(tick):
+                    self.storage.save(tick)
 
-                    print(
-                    tick
+                    print( 
+                        "STORED:",
+                        tick
                     )
 
 
