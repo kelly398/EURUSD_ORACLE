@@ -1,10 +1,21 @@
+from datetime import datetime
+
 import MetaTrader5 as mt5
 
 from backend.data_engine.base_provider import MarketDataProvider
 
 
-
 class MT5Provider(MarketDataProvider):
+
+    TIMEFRAMES = {
+        "M1": mt5.TIMEFRAME_M1,
+        "M5": mt5.TIMEFRAME_M5,
+        "M15": mt5.TIMEFRAME_M15,
+        "M30": mt5.TIMEFRAME_M30,
+        "H1": mt5.TIMEFRAME_H1,
+        "H4": mt5.TIMEFRAME_H4,
+        "D1": mt5.TIMEFRAME_D1,
+    }
 
 
     def __init__(self):
@@ -12,27 +23,19 @@ class MT5Provider(MarketDataProvider):
         self.connected = False
 
 
-
     def connect(self):
 
-        result = mt5.initialize()
-
-
-        if result:
+        if mt5.initialize():
 
             self.connected = True
-
             return True
 
+        print(
+            "MT5 INITIALIZATION ERROR:",
+            mt5.last_error()
+        )
 
-        else:
-
-            print(
-                mt5.last_error()
-            )
-
-            return False
-
+        return False
 
 
     def disconnect(self):
@@ -42,40 +45,124 @@ class MT5Provider(MarketDataProvider):
         self.connected = False
 
 
-
-    def get_price(self, symbol):
-
+    def get_price(
+        self,
+        symbol
+    ):
 
         if not self.connected:
 
-            raise Exception(
+            raise RuntimeError(
                 "MT5 not connected"
             )
-
 
         tick = mt5.symbol_info_tick(
             symbol
         )
 
-
         if tick is None:
 
             return None
 
-
         return {
-
             "symbol": symbol,
-
-            "bid": tick.bid,
-
-            "ask": tick.ask,
-
-            "time": tick.time
-
+            "bid": float(tick.bid),
+            "ask": float(tick.ask),
+            "time": int(tick.time),
+            "time_msc": int(
+                getattr(
+                    tick,
+                    "time_msc",
+                    tick.time * 1000
+                )
+            ),
         }
 
-    def get_candles(self, symbol, timeframe, count):
 
-        return []
+    def get_ticks_range(
+        self,
+        symbol,
+        date_from: datetime,
+        date_to: datetime
+    ):
 
+        if not self.connected:
+
+            raise RuntimeError(
+                "MT5 not connected"
+            )
+
+        ticks = mt5.copy_ticks_range(
+            symbol,
+            date_from,
+            date_to,
+            mt5.COPY_TICKS_ALL
+        )
+
+        if ticks is None:
+
+            print(
+                "MT5 TICK HISTORY ERROR:",
+                mt5.last_error()
+            )
+
+            return []
+
+        return ticks
+
+
+    def get_candles(
+        self,
+        symbol,
+        timeframe,
+        date_from=None,
+        date_to=None
+    ):
+
+        if not self.connected:
+
+            raise RuntimeError(
+                "MT5 not connected"
+            )
+
+        mt5_timeframe = (
+            self.TIMEFRAMES.get(
+                timeframe
+            )
+        )
+
+        if mt5_timeframe is None:
+
+            raise ValueError(
+                f"Unsupported timeframe: "
+                f"{timeframe}"
+            )
+
+        if (
+            date_from is None
+            or date_to is None
+        ):
+
+            raise ValueError(
+                "date_from and date_to "
+                "are required"
+            )
+
+        rates = mt5.copy_rates_range(
+            symbol,
+            mt5_timeframe,
+            date_from,
+            date_to
+        )
+
+        if rates is None:
+
+            print(
+                "MT5 CANDLE HISTORY ERROR:",
+                mt5.last_error()
+            )
+
+            return []
+
+        return rates
+        

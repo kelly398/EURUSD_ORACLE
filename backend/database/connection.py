@@ -4,9 +4,12 @@ from sqlalchemy.orm import sessionmaker
 from backend.config.credentials import DATABASE_URL
 
 
-
 engine = create_engine(
-    DATABASE_URL
+    DATABASE_URL,
+    connect_args={
+        "options": "-c timezone=UTC"
+    },
+    pool_pre_ping=True
 )
 
 
