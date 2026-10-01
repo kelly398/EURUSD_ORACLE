@@ -50,6 +50,18 @@ from backend.agents.implementations.anomaly_detection_agent import (
     AnomalyDetectionAgent
 )
 
+from backend.agents.implementations.liquidity_hunter_agent import (
+    LiquidityHunterAgent
+)
+
+from backend.agents.implementations.smart_money_agent import (
+    SmartMoneyAgent
+)
+
+from backend.agents.implementations.order_flow_agent import (
+    OrderFlowAgent
+)
+
 
 def register_core_agents(
     registry
@@ -118,5 +130,19 @@ def register_core_agents(
         AnomalyDetectionAgent()
     )
 
+    # Seat 17
+    registry.register(
+        LiquidityHunterAgent()
+    )
+
+    # Seat 18
+    registry.register(
+        SmartMoneyAgent()
+    )
+
+    # Seat 19
+    registry.register(
+        OrderFlowAgent()
+    )
 
     return registry

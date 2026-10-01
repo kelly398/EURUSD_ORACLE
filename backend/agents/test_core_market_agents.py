@@ -14,13 +14,12 @@ from backend.market_state.market_state_engine import (
     MarketStateEngine
 )
 
-from backend.market_state.candle_repository import (
-    CandleRepository
+from backend.agents.contracts import (
+    AgentSignalType
 )
 
-from backend.agents.contracts import (
-    AgentContext,
-    AgentSignalType
+from backend.agents.context_factory import (
+    AgentContextFactory
 )
 
 
@@ -69,55 +68,39 @@ def main():
     )
 
 
-    anchor = (
-        unified
-        .anchor_candle_timestamp
-    )
-
 
     # ==================================
-    # EXACT SAME CANDLE HISTORY
+    # SNAPSHOT-LOCKED AGENT CONTEXT
     # ==================================
 
-    candle_repository = (
-        CandleRepository(
-            source="MT5"
+    context_factory = (
+        AgentContextFactory(
+
+            candle_limit=200,
+
+            tick_lookback_minutes=65,
+
+            require_ticks=True
         )
     )
 
 
-    candles = (
-        candle_repository
-        .get_latest_as_of(
-
-            latest_timestamp=
-                anchor,
-
-            symbol="EURUSD",
-
-            timeframe="M5",
-
-            limit=200
+    context = (
+        context_factory.build(
+            unified
         )
     )
 
 
-    context = AgentContext(
+    print(
+        f"\nContext candles: "
+        f"{len(context.candles)}"
+    )
 
-        symbol=
-            snapshot.symbol,
 
-        timeframe=
-            snapshot.timeframe,
-
-        as_of=
-            snapshot.as_of,
-
-        market_state=
-            snapshot,
-
-        candles=
-            tuple(candles)
+    print(
+        f"Context ticks: "
+        f"{len(context.ticks)}"
     )
 
 
@@ -280,7 +263,7 @@ def main():
 
     assert (
         result.succeeded_count
-        == 13
+        == 16
     )
 
 
@@ -294,7 +277,7 @@ def main():
         len(
             result.missing_agent_ids
         )
-        == 15
+        == 12
     )
 
 
@@ -322,8 +305,24 @@ def main():
             10,
             14,
             15,
-            16      
+            16,
+            17,
+            18,
+            19      
         ]
+    )
+
+    assert (
+        len(
+            context.ticks
+        )
+        > 0
+    )
+
+
+    assert (
+        context.ticks[-1].timestamp
+        < context.as_of
     )
 
 

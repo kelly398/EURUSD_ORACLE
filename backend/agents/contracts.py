@@ -12,7 +12,8 @@ from pydantic import (
 from backend.market_state.schemas import (
     CandleBar,
     DataQualityStatus,
-    MarketStateSnapshot
+    MarketStateSnapshot,
+    TickSample
 )
 
 
@@ -152,6 +153,11 @@ class AgentContext(BaseModel):
         CandleBar,
         ...
     ]
+
+    ticks: tuple[
+        TickSample,
+        ...
+    ] = tuple()
 
 
     @model_validator(
@@ -298,6 +304,71 @@ class AgentContext(BaseModel):
                 "the analysis timestamp. "
                 "Possible look-ahead leakage."
             )
+
+                # ==================================
+        # OPTIONAL RAW TICK VALIDATION
+        # ==================================
+
+        for tick in self.ticks:
+
+            if (
+                tick.symbol
+                != self.symbol
+            ):
+
+                raise ValueError(
+                    "AgentContext contains "
+                    "mixed tick symbols."
+                )
+
+
+            if (
+                tick.timestamp
+                >= self.as_of
+            ):
+
+                raise ValueError(
+                    "AgentContext contains "
+                    "a tick at or beyond "
+                    "the analysis timestamp. "
+                    "Possible look-ahead leakage."
+                )
+
+
+        # Equal timestamps are legitimate
+        # because MT5 can publish multiple
+        # quote changes within the same
+        # millisecond.
+        for previous, current in zip(
+            self.ticks,
+            self.ticks[1:]
+        ):
+
+            if (
+                current.timestamp
+                < previous.timestamp
+            ):
+
+                raise ValueError(
+                    "AgentContext ticks must "
+                    "be in chronological order."
+                )
+
+
+            if (
+                current.timestamp
+                == previous.timestamp
+
+                and
+
+                current.source_time_msc
+                < previous.source_time_msc
+            ):
+
+                raise ValueError(
+                    "AgentContext ticks have "
+                    "invalid source-time order."
+                )
 
 
         return self
