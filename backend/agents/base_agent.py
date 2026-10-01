@@ -7,7 +7,8 @@ from backend.agents.contracts import (
     AgentCategory,
     AgentContext,
     AgentDirection,
-    AgentOpinion
+    AgentOpinion,
+    AgentSignalType
 )
 
 
@@ -18,6 +19,10 @@ class BaseAgent(ABC):
     agent_name = ""
 
     category = None
+
+    signal_type = (
+        AgentSignalType.DIRECTIONAL
+    )
 
     version = "1.0.0"
 
@@ -55,6 +60,17 @@ class BaseAgent(ABC):
             raise ValueError(
                 "Agent must define a "
                 "valid AgentCategory."
+            )
+
+
+        if not isinstance(
+            self.signal_type,
+            AgentSignalType
+        ):
+
+            raise ValueError(
+                "Agent must define a "
+                "valid AgentSignalType."
             )
 
 
@@ -151,6 +167,9 @@ class BaseAgent(ABC):
             category=
                 self.category,
 
+            signal_type=
+                self.signal_type,
+
             version=
                 self.version,
 
@@ -241,6 +260,17 @@ class BaseAgent(ABC):
             raise ValueError(
                 "Agent returned incorrect "
                 "category."
+            )
+
+
+        if (
+            opinion.signal_type
+            != self.signal_type
+        ):
+
+            raise ValueError(
+                "Agent returned incorrect "
+                "signal_type."
             )
 
 

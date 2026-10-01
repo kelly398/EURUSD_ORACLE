@@ -16,6 +16,10 @@ from backend.market_state.schemas import (
 )
 
 
+# ============================================================
+# EVIDENCE VALUE TYPE
+# ============================================================
+
 EvidenceValue = Union[
     str,
     int,
@@ -49,6 +53,58 @@ class AgentCategory(str, Enum):
 
 
 # ============================================================
+# AGENT EXECUTION STAGE
+# ============================================================
+
+class AgentStage(str, Enum):
+
+    PRIMARY = "primary"
+
+    GOVERNANCE = "governance"
+
+    SYNTHESIS = "synthesis"
+
+
+# ============================================================
+# COUNCIL SEAT SPECIFICATION
+# ============================================================
+
+class AgentSpec(BaseModel):
+
+    model_config = ConfigDict(
+        frozen=True
+    )
+
+    seat_number: int = Field(
+        ge=1,
+        le=31
+    )
+
+    agent_id: str = Field(
+        min_length=1
+    )
+
+    agent_name: str = Field(
+        min_length=1
+    )
+
+    category: AgentCategory
+
+    stage: AgentStage
+
+    purpose: str = Field(
+        min_length=1
+    )
+
+    required_inputs: tuple[
+        str,
+        ...
+    ] = tuple()
+
+    voting_member: bool = True
+
+
+# ============================================================
 # AGENT DIRECTION
 # ============================================================
 
@@ -62,7 +118,20 @@ class AgentDirection(str, Enum):
 
 
 # ============================================================
-# AGENT CONTEXT
+# AGENT SIGNAL TYPE
+# ============================================================
+
+class AgentSignalType(str, Enum):
+
+    DIRECTIONAL = "directional"
+
+    CONTEXTUAL = "contextual"
+
+    GOVERNANCE = "governance"
+
+
+# ============================================================
+# STANDARD AGENT CONTEXT
 # ============================================================
 
 class AgentContext(BaseModel):
@@ -90,6 +159,10 @@ class AgentContext(BaseModel):
     )
     def validate_context(self):
 
+        # ==================================
+        # SYMBOL CONSISTENCY
+        # ==================================
+
         if (
             self.market_state.symbol
             != self.symbol
@@ -101,6 +174,10 @@ class AgentContext(BaseModel):
                 "MarketStateSnapshot."
             )
 
+
+        # ==================================
+        # TIMEFRAME CONSISTENCY
+        # ==================================
 
         if (
             self.market_state.timeframe
@@ -114,6 +191,10 @@ class AgentContext(BaseModel):
             )
 
 
+        # ==================================
+        # TIMESTAMP CONSISTENCY
+        # ==================================
+
         if (
             self.market_state.as_of
             != self.as_of
@@ -126,6 +207,10 @@ class AgentContext(BaseModel):
             )
 
 
+        # ==================================
+        # DATA QUALITY GATE
+        # ==================================
+
         if (
             self.market_state.data_quality
             != DataQualityStatus.PASS
@@ -137,6 +222,10 @@ class AgentContext(BaseModel):
             )
 
 
+        # ==================================
+        # CANDLE AVAILABILITY
+        # ==================================
+
         if not self.candles:
 
             raise ValueError(
@@ -145,9 +234,16 @@ class AgentContext(BaseModel):
             )
 
 
+        # ==================================
+        # CANDLE IDENTITY CHECKS
+        # ==================================
+
         for candle in self.candles:
 
-            if candle.symbol != self.symbol:
+            if (
+                candle.symbol
+                != self.symbol
+            ):
 
                 raise ValueError(
                     "AgentContext contains "
@@ -166,6 +262,10 @@ class AgentContext(BaseModel):
                 )
 
 
+        # ==================================
+        # STRICT CHRONOLOGICAL ORDER
+        # ==================================
+
         for previous, current in zip(
             self.candles,
             self.candles[1:]
@@ -181,6 +281,23 @@ class AgentContext(BaseModel):
                     "must be in strict "
                     "chronological order."
                 )
+
+
+        # ==================================
+        # ANTI LOOK-AHEAD CHECK
+        # ==================================
+
+        if (
+            self.candles[-1].timestamp
+            >= self.as_of
+        ):
+
+            raise ValueError(
+                "AgentContext contains "
+                "a candle at or beyond "
+                "the analysis timestamp. "
+                "Possible look-ahead leakage."
+            )
 
 
         return self
@@ -201,6 +318,8 @@ class AgentOpinion(BaseModel):
     agent_name: str
 
     category: AgentCategory
+
+    signal_type: AgentSignalType
 
     version: str
 
@@ -228,4 +347,48 @@ class AgentOpinion(BaseModel):
     ] = Field(
         default_factory=dict
     )
-    
+
+
+    @model_validator(
+        mode="after"
+    )
+    def validate_signal_role(self):
+
+        # ==================================
+        # CONTEXTUAL AGENT RULES
+        # ==================================
+        #
+        # Contextual agents may express
+        # confidence about market conditions,
+        # but they must never manufacture a
+        # directional LONG or SHORT vote.
+        # ==================================
+
+        if (
+            self.signal_type
+            == AgentSignalType.CONTEXTUAL
+        ):
+
+            if (
+                self.direction
+                != AgentDirection.NEUTRAL
+            ):
+
+                raise ValueError(
+                    "Contextual opinions must "
+                    "be directionally neutral."
+                )
+
+
+            if (
+                abs(self.score)
+                > 1e-12
+            ):
+
+                raise ValueError(
+                    "Contextual opinions must "
+                    "have directional score 0."
+                )
+
+
+        return self

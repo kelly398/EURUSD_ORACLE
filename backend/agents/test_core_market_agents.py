@@ -1,0 +1,434 @@
+from backend.agents.agent_registry import (
+    AgentRegistry
+)
+
+from backend.agents.council_runner import (
+    CouncilRunner
+)
+
+from backend.agents.register_core_agents import (
+    register_core_agents
+)
+
+from backend.market_state.market_state_engine import (
+    MarketStateEngine
+)
+
+from backend.market_state.candle_repository import (
+    CandleRepository
+)
+
+from backend.agents.contracts import (
+    AgentContext,
+    AgentSignalType
+)
+
+
+def main():
+
+    print(
+        "=" * 70
+    )
+
+    print(
+        "EUR/USD ORACLE "
+        "CORE MARKET AGENTS TEST"
+    )
+
+    print(
+        "=" * 70
+    )
+
+
+    # ==================================
+    # SYNCHRONIZED MARKET STATE
+    # ==================================
+
+    market_engine = (
+        MarketStateEngine(
+
+            symbol="EURUSD",
+
+            timeframe="M5",
+
+            timeframe_minutes=5,
+
+            candle_limit=200
+        )
+    )
+
+
+    unified = (
+        market_engine
+        .build_snapshot()
+    )
+
+
+    snapshot = (
+        unified.snapshot
+    )
+
+
+    anchor = (
+        unified
+        .anchor_candle_timestamp
+    )
+
+
+    # ==================================
+    # EXACT SAME CANDLE HISTORY
+    # ==================================
+
+    candle_repository = (
+        CandleRepository(
+            source="MT5"
+        )
+    )
+
+
+    candles = (
+        candle_repository
+        .get_latest_as_of(
+
+            latest_timestamp=
+                anchor,
+
+            symbol="EURUSD",
+
+            timeframe="M5",
+
+            limit=200
+        )
+    )
+
+
+    context = AgentContext(
+
+        symbol=
+            snapshot.symbol,
+
+        timeframe=
+            snapshot.timeframe,
+
+        as_of=
+            snapshot.as_of,
+
+        market_state=
+            snapshot,
+
+        candles=
+            tuple(candles)
+    )
+
+
+    # ==================================
+    # REGISTER REAL AGENTS
+    # ==================================
+
+    registry = (
+        AgentRegistry()
+    )
+
+
+    register_core_agents(
+        registry
+    )
+
+
+    print(
+        f"\nImplemented Council agents: "
+        f"{registry.implemented_count}"
+    )
+
+
+    print(
+        f"Remaining Council agents: "
+        f"{len(registry.missing_agent_ids)}"
+    )
+
+
+    # ==================================
+    # RUN REAL PRIMARY AGENTS
+    # ==================================
+
+    runner = CouncilRunner(
+
+        registry=registry,
+
+        max_workers=4
+    )
+
+
+    result = (
+        runner.run_primary(
+
+            context=context,
+
+            require_all_registered=False
+        )
+    )
+
+
+    print(
+        f"\nSnapshot as-of: "
+        f"{context.as_of}"
+    )
+
+
+    print(
+        f"Successful agents: "
+        f"{result.succeeded_count}"
+    )
+
+
+    print(
+        f"Failed agents: "
+        f"{result.failed_count}"
+    )
+
+
+    print(
+        f"Missing primary agents: "
+        f"{len(result.missing_agent_ids)}"
+    )
+
+
+    print(
+        "\n"
+        + "-" * 70
+    )
+
+    print(
+        "REAL COUNCIL OPINIONS"
+    )
+
+    print(
+        "-" * 70
+    )
+
+
+    for execution in (
+        result.executions
+    ):
+
+        print(
+            f"{execution.seat_number:02d} | "
+            f"{execution.agent_name:<20} | "
+            f"{execution.status.value:<7}"
+        )
+
+
+        if (
+            execution.opinion
+            is not None
+        ):
+
+            opinion = (
+                execution.opinion
+            )
+
+            print(
+                "     "
+                f"signal_type="
+                f"{opinion.signal_type.value}"
+            )
+
+
+            print(
+                "     "
+                f"direction="
+                f"{opinion.direction.value}"
+            )
+
+
+            print(
+                "     "
+                f"score="
+                f"{opinion.score:.4f}"
+            )
+
+
+            print(
+                "     "
+                f"confidence="
+                f"{opinion.confidence:.4f}"
+            )
+
+
+            print(
+                "     "
+                f"rationale="
+                f"{opinion.rationale}"
+            )
+
+
+        if (
+            execution.error
+            is not None
+        ):
+
+            print(
+                "     "
+                f"error="
+                f"{execution.error}"
+            )
+
+
+    # ==================================
+    # ASSERTIONS
+    # ==================================
+
+    assert (
+        result.succeeded_count
+        == 13
+    )
+
+
+    assert (
+        result.failed_count
+        == 0
+    )
+
+
+    assert (
+        len(
+            result.missing_agent_ids
+        )
+        == 15
+    )
+
+
+    seat_numbers = [
+
+        execution.seat_number
+
+        for execution
+        in result.executions
+    ]
+
+
+    assert (
+        seat_numbers
+        == [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            14,
+            15,
+            16      
+        ]
+    )
+
+
+    for opinion in (
+        result.opinions
+    ):
+
+        assert (
+            opinion.as_of
+            == snapshot.as_of
+        )
+
+
+    opinions_by_id = {
+
+        opinion.agent_id:
+            opinion
+
+        for opinion
+        in result.opinions
+    }
+
+
+    # Volatility must remain
+    # non-directional.
+    assert (
+        opinions_by_id[
+            "volatility"
+        ].score
+        == 0.0
+    )
+
+
+    assert (
+        opinions_by_id[
+            "volatility"
+        ].direction.value
+        == "neutral"
+    )
+
+    assert (
+        opinions_by_id[
+            "volatility"
+        ].signal_type
+        == AgentSignalType.CONTEXTUAL
+    )
+
+
+    assert (
+        opinions_by_id[
+            "anomaly_detection"
+        ].signal_type
+        == AgentSignalType.CONTEXTUAL
+    )
+
+
+    assert (
+        opinions_by_id[
+            "trend_master"
+        ].signal_type
+        == AgentSignalType.DIRECTIONAL
+    )
+
+
+    assert (
+        opinions_by_id[
+            "mean_reversion"
+        ].signal_type
+        == AgentSignalType.DIRECTIONAL
+    )
+
+        # Anomaly Detection is also
+    # contextual rather than directional.
+    assert (
+        opinions_by_id[
+            "anomaly_detection"
+        ].score
+        == 0.0
+    )
+
+
+    assert (
+        opinions_by_id[
+            "anomaly_detection"
+        ].direction.value
+        == "neutral"
+    )
+
+
+    print(
+        "\n"
+        + "=" * 70
+    )
+
+    print(
+        "CORE MARKET AGENTS "
+        "TEST: PASS"
+    )
+
+    print(
+        "=" * 70
+    )
+
+
+if __name__ == "__main__":
+
+    main()
+    
