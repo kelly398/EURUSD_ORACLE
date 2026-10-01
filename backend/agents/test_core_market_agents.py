@@ -263,7 +263,7 @@ def main():
 
     assert (
         result.succeeded_count
-        == 16
+        == 18
     )
 
 
@@ -277,7 +277,7 @@ def main():
         len(
             result.missing_agent_ids
         )
-        == 12
+        == 10
     )
 
 
@@ -308,7 +308,9 @@ def main():
             16,
             17,
             18,
-            19      
+            19,
+            20,
+            21
         ]
     )
 
@@ -344,6 +346,47 @@ def main():
         for opinion
         in result.opinions
     }
+
+    london_opinion = (
+        opinions_by_id[
+            "london_session"
+        ]
+    )
+
+
+    new_york_opinion = (
+        opinions_by_id[
+            "new_york_session"
+        ]
+    )
+
+
+    assert (
+        london_opinion.as_of
+        == context.as_of
+    )
+
+
+    assert (
+        new_york_opinion.as_of
+        == context.as_of
+    )
+
+
+    assert (
+        london_opinion.evidence[
+            "session"
+        ]
+        == "london"
+    )
+
+
+    assert (
+        new_york_opinion.evidence[
+            "session"
+        ]
+        == "new_york"
+    )
 
 
     # Volatility must remain

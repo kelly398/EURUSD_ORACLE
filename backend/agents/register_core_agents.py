@@ -62,6 +62,13 @@ from backend.agents.implementations.order_flow_agent import (
     OrderFlowAgent
 )
 
+from backend.agents.implementations.london_session_agent import (
+    LondonSessionAgent
+)
+
+from backend.agents.implementations.new_york_session_agent import (
+    NewYorkSessionAgent
+)
 
 def register_core_agents(
     registry
@@ -144,5 +151,14 @@ def register_core_agents(
     registry.register(
         OrderFlowAgent()
     )
+    # Seat 20
+    registry.register(
+        LondonSessionAgent()
+    )
+    # Seat 21
+    registry.register(
+        NewYorkSessionAgent()
+    )
+    
 
     return registry
