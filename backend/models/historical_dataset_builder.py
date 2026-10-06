@@ -1,3 +1,4 @@
+from bisect import bisect_left
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -45,6 +46,11 @@ class HistoricalDatasetBuilder:
         candle_window=200,
         timeframe_minutes=5
     ):
+
+        if candle_window < 140:
+            raise ValueError("candle_window must be at least 140.")
+        if timeframe_minutes != 5 or label_specification.timeframe_minutes != 5:
+            raise ValueError("Historical dataset features currently require M5 candles.")
 
         self.label_specification = (
             label_specification
@@ -163,13 +169,6 @@ class HistoricalDatasetBuilder:
             )
 
 
-        if not ticks:
-
-            raise ValueError(
-                "Dataset builder requires ticks."
-            )
-
-
         for previous, current in zip(
             candles,
             candles[1:]
@@ -192,6 +191,8 @@ class HistoricalDatasetBuilder:
                 tick.source_time_msc
             )
         )
+
+        tick_times = [tick.timestamp for tick in ticks]
 
 
         samples = []
@@ -326,17 +327,9 @@ class HistoricalDatasetBuilder:
             )
 
 
-            historical_ticks = [
-
-                tick
-
-                for tick in ticks
-
-                if (
-                    tick_start
-                    <= tick.timestamp
-                    < as_of
-                )
+            historical_ticks = ticks[
+                bisect_left(tick_times, tick_start):
+                bisect_left(tick_times, as_of)
             ]
 
 
@@ -355,6 +348,11 @@ class HistoricalDatasetBuilder:
                             anchor.timestamp
                     )
                 )
+
+                if replay is None:
+                    raise RuntimeError(
+                        "HistoricalReplayBuilder returned None"
+                    )
 
 
                 features = (
@@ -387,10 +385,14 @@ class HistoricalDatasetBuilder:
             except (
                 ValueError,
                 RuntimeError
-            ):
+            ) as e:
+
+                print("\n========== REPLAY FAILURE ==========")
+                print("Timestamp:", anchor.timestamp)
+                print("Reason:", str(e))
+                print("====================================\n")
 
                 skipped_replay_error += 1
-
 
         return HistoricalDatasetResult(
 

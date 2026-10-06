@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 
 from pydantic import (
     BaseModel,
@@ -73,6 +74,8 @@ class TrainingSample(BaseModel):
     feature_as_of: datetime
 
     target_available_at: datetime
+
+    split: Literal["train", "validation", "test"] | None = None
 
 
     @model_validator(

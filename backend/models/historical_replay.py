@@ -38,6 +38,9 @@ from backend.market_state.session_engine import (
 )
 
 
+DEBUG_REPLAY = False
+
+
 @dataclass(frozen=True)
 class HistoricalReplayResult:
 
@@ -52,7 +55,9 @@ class HistoricalReplayResult:
     tick_count: int
 
 
+
 class HistoricalReplayBuilder:
+
 
     def __init__(
         self,
@@ -110,12 +115,14 @@ class HistoricalReplayBuilder:
         )
 
 
+
     def build(
         self,
         candles,
         ticks,
         anchor_timestamp
     ):
+
 
         candles = list(
             candles
@@ -128,9 +135,18 @@ class HistoricalReplayBuilder:
 
         if not candles:
 
+            if DEBUG_REPLAY:
+                print(
+                    "\nREPLAY FAILURE:"
+                )
+                print(
+                    "Reason: No candles supplied"
+                )
+
             raise ValueError(
                 "Historical replay requires candles."
             )
+
 
 
         if (
@@ -138,15 +154,25 @@ class HistoricalReplayBuilder:
             is None
         ):
 
+            if DEBUG_REPLAY:
+                print(
+                    "\nREPLAY FAILURE:"
+                )
+                print(
+                    "Reason: Anchor timestamp has no timezone"
+                )
+
             raise ValueError(
                 "anchor_timestamp must "
                 "be timezone-aware."
             )
 
 
+
         # ==================================
         # CANDLE VALIDATION
         # ==================================
+
 
         for previous, current in zip(
             candles,
@@ -158,13 +184,23 @@ class HistoricalReplayBuilder:
                 <= previous.timestamp
             ):
 
+                if DEBUG_REPLAY:
+                    print(
+                        "\nREPLAY FAILURE:"
+                    )
+                    print(
+                        "Reason: candles not chronological"
+                    )
+
                 raise ValueError(
                     "Historical candles must "
                     "be strictly chronological."
                 )
 
 
+
         for candle in candles:
+
 
             if (
                 candle.symbol
@@ -175,6 +211,7 @@ class HistoricalReplayBuilder:
                     "Historical replay contains "
                     "mixed candle symbols."
                 )
+
 
 
             if (
@@ -188,9 +225,7 @@ class HistoricalReplayBuilder:
                 )
 
 
-        # Absolutely no candle after the
-        # requested historical anchor may
-        # enter an intelligence engine.
+
         history = [
 
             candle
@@ -201,10 +236,24 @@ class HistoricalReplayBuilder:
                 candle.timestamp
                 <= anchor_timestamp
             )
+
         ]
 
 
+
         if not history:
+
+            if DEBUG_REPLAY:
+                print(
+                    "\nREPLAY FAILURE:"
+                )
+                print(
+                    "Reason: No candles before anchor"
+                )
+                print(
+                    "Anchor:",
+                    anchor_timestamp
+                )
 
             raise ValueError(
                 "No candles exist at or before "
@@ -212,15 +261,38 @@ class HistoricalReplayBuilder:
             )
 
 
+
         if (
             history[-1].timestamp
             != anchor_timestamp
         ):
 
+            if DEBUG_REPLAY:
+
+                print(
+                    "\nREPLAY FAILURE:"
+                )
+
+                print(
+                    "Reason: Anchor candle missing"
+                )
+
+                print(
+                    "Requested:",
+                    anchor_timestamp
+                )
+
+                print(
+                    "Latest candle:",
+                    history[-1].timestamp
+                )
+
+
             raise ValueError(
                 "Historical anchor candle "
                 "is missing."
             )
+
 
 
         history = (
@@ -230,14 +302,36 @@ class HistoricalReplayBuilder:
         )
 
 
-        # Volatility currently has the
-        # largest minimum requirement.
+
         if len(history) < 140:
+
+
+            if DEBUG_REPLAY:
+
+                print(
+                    "\nREPLAY FAILURE:"
+                )
+
+                print(
+                    "Reason: insufficient candle history"
+                )
+
+                print(
+                    "Available:",
+                    len(history)
+                )
+
+                print(
+                    "Required:",
+                    140
+                )
+
 
             raise ValueError(
                 "Historical replay requires "
                 "at least 140 candles."
             )
+
 
 
         as_of = (
@@ -248,12 +342,15 @@ class HistoricalReplayBuilder:
                 minutes=
                     self.timeframe_minutes
             )
+
         )
+
 
 
         # ==================================
         # TICK VALIDATION + LOCK
         # ==================================
+
 
         tick_start = (
 
@@ -263,7 +360,9 @@ class HistoricalReplayBuilder:
                 minutes=
                     self.tick_lookback_minutes
             )
+
         )
+
 
 
         tick_window = [
@@ -273,14 +372,40 @@ class HistoricalReplayBuilder:
             for tick in ticks
 
             if (
+
                 tick_start
                 <= tick.timestamp
                 < as_of
+
             )
+
         ]
 
 
+
         if not tick_window:
+
+
+            if DEBUG_REPLAY:
+
+                print(
+                    "\nREPLAY FAILURE:"
+                )
+
+                print(
+                    "Reason: No ticks available"
+                )
+
+                print(
+                    "Tick start:",
+                    tick_start
+                )
+
+                print(
+                    "Tick end:",
+                    as_of
+                )
+
 
             raise ValueError(
                 "No historical ticks available "
@@ -288,7 +413,9 @@ class HistoricalReplayBuilder:
             )
 
 
+
         for tick in tick_window:
+
 
             if (
                 tick.symbol
@@ -301,147 +428,242 @@ class HistoricalReplayBuilder:
                 )
 
 
+
         tick_window.sort(
+
             key=lambda tick: (
+
                 tick.timestamp,
+
                 tick.source_time_msc
+
             )
+
         )
+
 
 
         # ==================================
         # REPLAY MARKET INTELLIGENCE
         # ==================================
 
-        trend = (
-            self.trend_engine
-            .analyze_detailed(
-                history
+
+        try:
+
+            trend = (
+
+                self.trend_engine
+
+                .analyze_detailed(
+
+                    history
+
+                )
+
             )
-        )
+
+        except Exception as e:
+
+            print("\n========== TREND ENGINE FAILURE ==========")
+            print("Anchor:", anchor_timestamp)
+            print("Candles:", len(history))
+            print("Error:", repr(e))
+            print("===========================================\n")
+            raise
 
 
-        volatility = (
-            self.volatility_engine
-            .analyze_detailed(
-                history
+
+        try:
+
+            volatility = (
+
+                self.volatility_engine
+
+                .analyze_detailed(
+
+                    history
+
+                )
+
             )
-        )
+
+        except Exception as e:
+
+            print("\n====== VOLATILITY ENGINE FAILURE ======")
+            print("Anchor:", anchor_timestamp)
+            print("Candles:", len(history))
+            print("Error:", repr(e))
+            print("========================================\n")
+            raise
 
 
-        momentum = (
-            self.momentum_engine
-            .analyze_detailed(
-                history
+
+        try:
+
+            momentum = (
+
+                self.momentum_engine
+
+                .analyze_detailed(
+
+                    history
+
+                )
+
             )
-        )
+
+        except Exception as e:
+
+            print("\n======= MOMENTUM ENGINE FAILURE =======")
+            print("Anchor:", anchor_timestamp)
+            print("Candles:", len(history))
+            print("Error:", repr(e))
+            print("========================================\n")
+            raise
 
 
-        structure = (
-            self.structure_engine
-            .analyze_detailed(
-                history
+
+        try:
+
+            structure = (
+
+                self.structure_engine
+
+                .analyze_detailed(
+
+                    history
+
+                )
+
             )
-        )
+
+        except Exception as e:
+
+            print("\n===== STRUCTURE ENGINE FAILURE =====")
+            print("Anchor:", anchor_timestamp)
+            print("Candles:", len(history))
+            print("Error:", repr(e))
+            print("====================================\n")
+            raise
 
 
-        liquidity = (
-            self.liquidity_engine
-            .analyze_detailed(
 
-                ticks=
-                    tick_window,
+        try:
 
-                as_of=
+            liquidity = (
+
+                self.liquidity_engine
+
+                .analyze_detailed(
+
+                    ticks=tick_window,
+
+                    as_of=as_of
+
+                )
+
+            )
+
+        except Exception as e:
+
+            print("\n===== LIQUIDITY ENGINE FAILURE =====")
+            print("Anchor:", anchor_timestamp)
+            print("Ticks:", len(tick_window))
+            print("Error:", repr(e))
+            print("====================================\n")
+            raise
+
+
+
+        try:
+
+            session = (
+
+                self.session_engine
+
+                .analyze(
+
                     as_of
+
+                )
             )
+
+        except Exception as e:
+
+            print("\n===== SESSION ENGINE FAILURE =====")
+            print("Anchor:", anchor_timestamp)
+            print("Error:", repr(e))
+            print("==================================\n")
+            raise
+
+
+
+        snapshot = MarketStateSnapshot(
+            symbol=self.symbol,
+            timeframe=self.timeframe,
+            as_of=as_of,
+            data_quality=DataQualityStatus.PASS,
+            candle_count=len(history),
+            trend=trend.state,
+            volatility=volatility.state,
+            momentum=momentum.state,
+            structure=structure.state,
+            liquidity=liquidity.state,
+            session=session.session,
         )
-
-
-        session = (
-            self.session_engine
-            .analyze(
-                as_of
-            )
-        )
-
-
-        snapshot = (
-            MarketStateSnapshot(
-
-                symbol=
-                    self.symbol,
-
-                timeframe=
-                    self.timeframe,
-
-                as_of=
-                    as_of,
-
-                data_quality=
-                    DataQualityStatus.PASS,
-
-                candle_count=
-                    len(history),
-
-                trend=
-                    trend.state,
-
-                volatility=
-                    volatility.state,
-
-                momentum=
-                    momentum.state,
-
-                structure=
-                    structure.state,
-
-                liquidity=
-                    liquidity.state,
-
-                session=
-                    session.session
-            )
-        )
-
 
         context = AgentContext(
 
-            symbol=
-                self.symbol,
+            symbol=self.symbol,
 
-            timeframe=
-                self.timeframe,
+            timeframe=self.timeframe,
 
-            as_of=
-                as_of,
+            as_of=as_of,
 
-            market_state=
-                snapshot,
+            market_state=snapshot,
 
-            candles=
-                tuple(history),
+            candles=tuple(history),
 
-            ticks=
-                tuple(tick_window)
-        )
+            ticks=tuple(tick_window)
+
+            )
+
+        if DEBUG_REPLAY:
+
+            print(
+                "\nREPLAY SUCCESS:"
+            )
+
+            print(
+                "Anchor:",
+                anchor_timestamp
+            )
+
+            print(
+                "Candles:",
+                len(history)
+            )
+
+            print(
+                "Ticks:",
+                len(tick_window)
+            )
+
+            print(
+                "ABOUT TO RETURN HISTORICAL REPLAY RESULT"
+            )
 
 
         return HistoricalReplayResult(
 
-            anchor_timestamp=
-                anchor_timestamp,
+            anchor_timestamp=anchor_timestamp,
 
-            as_of=
-                as_of,
+            as_of=as_of,
 
-            context=
-                context,
+            context=context,
 
-            candle_count=
-                len(history),
+            candle_count=len(history),
 
-            tick_count=
-                len(tick_window)
+            tick_count=len(tick_window)
+
         )
-        

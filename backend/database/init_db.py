@@ -2,6 +2,7 @@ from backend.database.connection import engine
 
 from backend.database.models import Base
 
+from backend.models.dataset_models import MLTrainingSample
 
 def initialize():
 
@@ -17,3 +18,4 @@ if __name__ == "__main__":
     print(
         "DATABASE TABLES CREATED"
     )
+    
