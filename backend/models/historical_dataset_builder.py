@@ -39,6 +39,10 @@ class HistoricalDatasetResult:
 
 class HistoricalDatasetBuilder:
 
+
+
+
+
     def __init__(
         self,
         label_specification:
@@ -147,6 +151,74 @@ class HistoricalDatasetBuilder:
         return True
 
 
+    def _has_tick_context(
+        self,
+        ticks,
+        as_of,
+    ):
+        tick_start = (
+            as_of
+            - timedelta(
+                minutes=self.replay_builder.tick_lookback_minutes
+            )
+        )
+
+        window = [
+            tick
+            for tick in ticks
+            if (
+                tick_start
+                <= tick.timestamp
+                < as_of
+            )
+        ]
+
+        if not window:
+            return False
+
+        recent_start = (
+            as_of
+            - timedelta(
+                minutes=self.replay_builder.liquidity_engine.recent_minutes
+            )
+        )
+
+        baseline_start = (
+            recent_start
+            - timedelta(
+                minutes=self.replay_builder.liquidity_engine.baseline_minutes
+            )
+        )
+
+        recent = [
+            tick
+            for tick in window
+            if (
+                recent_start
+                <= tick.timestamp
+                < as_of
+            )
+        ]
+
+        baseline = [
+            tick
+            for tick in window
+            if (
+                baseline_start
+                <= tick.timestamp
+                < recent_start
+            )
+        ]
+
+        return (
+            len(recent)
+            >= self.replay_builder.liquidity_engine.minimum_recent_ticks
+            and
+            len(baseline)
+            >= self.replay_builder.liquidity_engine.minimum_baseline_ticks
+        )
+
+
     def build(
         self,
         candles,
@@ -192,6 +264,12 @@ class HistoricalDatasetBuilder:
             )
         )
 
+        for tick in ticks:
+            if tick.symbol != "EURUSD":
+                raise ValueError(
+                    "Dataset ticks must contain only EURUSD."
+                )
+
         tick_times = [tick.timestamp for tick in ticks]
 
 
@@ -213,6 +291,21 @@ class HistoricalDatasetBuilder:
         first_anchor_index = (
             self.candle_window - 1
         )
+
+        if tick_times:
+            earliest_tick_ready_time = (
+                tick_times[0]
+                + timedelta(
+                    minutes=self.replay_builder.tick_lookback_minutes
+                )
+            )
+
+            while (
+                first_anchor_index < len(candles)
+                and candles[first_anchor_index].timestamp
+                < earliest_tick_ready_time
+            ):
+                first_anchor_index += 1
 
 
         last_anchor_index = (
@@ -239,7 +332,7 @@ class HistoricalDatasetBuilder:
 
                 skipped_target_gap=0,
 
-                skipped_replay_error=0
+                skipped_tick_context=0
             )
 
 
@@ -248,8 +341,16 @@ class HistoricalDatasetBuilder:
             last_anchor_index + 1
         ):
 
-            candidate_count += 1
+            as_of = candles[anchor_index].timestamp
 
+            if not self._has_tick_context(
+                ticks,
+                as_of,
+            ):
+                skipped_replay_error += 1
+                continue
+
+            candidate_count += 1
 
             if not self._target_is_contiguous(
                 candles,
@@ -332,6 +433,12 @@ class HistoricalDatasetBuilder:
                 bisect_left(tick_times, as_of)
             ]
 
+            if not self.replay_builder.has_sufficient_tick_context(
+                historical_ticks,
+                as_of
+            ):
+                skipped_replay_error += 1
+                continue
 
             try:
 
@@ -345,7 +452,9 @@ class HistoricalDatasetBuilder:
                             historical_ticks,
 
                         anchor_timestamp=
-                            anchor.timestamp
+                            anchor.timestamp,
+
+                        ticks_prebounded=True
                     )
                 )
 
@@ -411,4 +520,3 @@ class HistoricalDatasetBuilder:
             skipped_replay_error=
                 skipped_replay_error
         )
-        

@@ -58,6 +58,72 @@ class HistoricalReplayResult:
 
 class HistoricalReplayBuilder:
 
+    def has_sufficient_tick_context(
+        self,
+        ticks,
+        as_of
+    ):
+        tick_start = (
+            as_of
+            - timedelta(
+                minutes=self.tick_lookback_minutes
+            )
+        )
+
+        window = [
+            tick
+            for tick in ticks
+            if (
+                tick_start
+                <= tick.timestamp
+                < as_of
+            )
+        ]
+
+        if len(window) < 1:
+            return False
+
+        recent_start = (
+            as_of
+            - timedelta(
+                minutes=self.liquidity_engine.recent_minutes
+            )
+        )
+
+        baseline_start = (
+            recent_start
+            - timedelta(
+                minutes=self.liquidity_engine.baseline_minutes
+            )
+        )
+
+        baseline = [
+            tick
+            for tick in window
+            if (
+                baseline_start
+                <= tick.timestamp
+                < recent_start
+            )
+        ]
+        recent = [
+            tick
+            for tick in window
+            if (
+                recent_start
+                <= tick.timestamp
+                < as_of
+            )
+        ]
+
+        return (
+            len(recent)
+            >= self.liquidity_engine.minimum_recent_ticks
+            and
+            len(baseline)
+            >= self.liquidity_engine.minimum_baseline_ticks
+        )
+
 
     def __init__(
         self,
@@ -120,7 +186,8 @@ class HistoricalReplayBuilder:
         self,
         candles,
         ticks,
-        anchor_timestamp
+        anchor_timestamp,
+        ticks_prebounded=False
     ):
 
 
@@ -365,21 +432,38 @@ class HistoricalReplayBuilder:
 
 
 
-        tick_window = [
+        if ticks_prebounded:
 
-            tick
+            tick_window = ticks
 
-            for tick in ticks
+            if tick_window:
 
-            if (
+                if (
+                    tick_window[0].timestamp < tick_start
+                    or tick_window[-1].timestamp >= as_of
+                ):
+                    raise ValueError(
+                        "Pre-bounded ticks fall outside "
+                        "the replay window."
+                    )
 
-                tick_start
-                <= tick.timestamp
-                < as_of
+        else:
 
-            )
+            tick_window = [
 
-        ]
+                tick
+
+                for tick in ticks
+
+                if (
+
+                    tick_start
+                    <= tick.timestamp
+                    < as_of
+
+                )
+
+            ]
 
 
 
@@ -414,32 +498,31 @@ class HistoricalReplayBuilder:
 
 
 
-        for tick in tick_window:
+        if not ticks_prebounded:
 
+            for tick in tick_window:
 
-            if (
-                tick.symbol
-                != self.symbol
-            ):
+                if (
+                    tick.symbol
+                    != self.symbol
+                ):
 
-                raise ValueError(
-                    "Historical replay contains "
-                    "mixed tick symbols."
+                    raise ValueError(
+                        "Historical replay contains "
+                        "mixed tick symbols."
+                    )
+                    
+            tick_window.sort(
+
+                key=lambda tick: (
+
+                    tick.timestamp,
+
+                    tick.source_time_msc
+
                 )
 
-
-
-        tick_window.sort(
-
-            key=lambda tick: (
-
-                tick.timestamp,
-
-                tick.source_time_msc
-
             )
-
-        )
 
 
 

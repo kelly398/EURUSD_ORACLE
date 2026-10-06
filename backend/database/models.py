@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     Boolean,
     UniqueConstraint,
+    Index,
     func
 )
 
@@ -24,6 +25,12 @@ class Tick(Base):
         UniqueConstraint(
             "fingerprint",
             name="uq_tick_fingerprint"
+        ),
+        Index(
+            "ix_ticks_symbol_timestamp_source_msc",
+            "symbol",
+            "timestamp",
+            "source_time_msc"
         ),
     )
 
@@ -190,6 +197,13 @@ class BrokerCandle(Base):
             "timestamp",
             "source",
             name="uq_broker_candle"
+        ),
+        Index(
+            "ix_broker_candles_symbol_timeframe_source_timestamp",
+            "symbol",
+            "timeframe",
+            "source",
+            "timestamp"
         ),
     )
 

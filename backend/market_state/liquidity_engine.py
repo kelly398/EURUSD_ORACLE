@@ -166,6 +166,18 @@ class LiquidityEngine:
             ticks
         )
 
+        if ticks:
+
+            if (
+                ticks[-1].timestamp
+                > as_of
+            ):
+
+                raise ValueError(
+                    "LiquidityEngine received "
+                    "ticks with timestamps "
+                    "after the as_of time."
+                )
 
         self._validate(
             ticks

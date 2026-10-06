@@ -5,7 +5,8 @@ from sqlalchemy import (
     Float,
     DateTime,
     JSON,
-    UniqueConstraint
+    UniqueConstraint,
+    Index
 )
 
 from backend.database.models import Base
@@ -103,5 +104,14 @@ class MLTrainingSample(
             "uq_ml_training_sample"
         ),
 
+        Index(
+            "ix_ml_training_samples_training_slice",
+            "symbol",
+            "timeframe",
+            "feature_version",
+            "label_version",
+            "split",
+            "feature_timestamp"
+        ),
+
     )
-    

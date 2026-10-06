@@ -192,4 +192,3 @@ class TrainingSample(BaseModel):
 
 
         return self
-        
