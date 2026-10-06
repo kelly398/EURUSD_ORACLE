@@ -1,0 +1,55 @@
+{
+  "dataset_name": "EURUSD ORACLE ML Dataset",
+  "dataset_version": "eurusd_m5_full_20251002_20261001_v1",
+  "symbol": "EURUSD",
+  "timeframe": "M5",
+  "source": "MT5",
+
+  "date_range": {
+    "start": "2025-10-02T00:00:00+00:00",
+    "end": "2026-10-01T00:00:00+00:00"
+  },
+
+  "statistics": {
+    "total_samples": 72363,
+    "train_samples": 50462,
+    "validation_samples": 11084,
+    "test_samples": 10817
+  },
+
+  "features": {
+    "feature_version": "eurusd_m5_v1",
+    "feature_count": 27
+  },
+
+  "labels": {
+    "label_version": "eurusd_m5_direction_v1",
+    "classes": [
+      "long",
+      "neutral",
+      "short"
+    ],
+    "distribution": {
+      "long": 25177,
+      "neutral": 21265,
+      "short": 25921
+    }
+  },
+
+  "quality_checks": {
+    "split_leakage": "PASS",
+    "target_horizon": "PASS",
+    "feature_schema": "PASS",
+    "dataset_audit": "PASS"
+  },
+
+  "generation": {
+    "candidate_rows": 72465,
+    "generated_rows": 72363,
+    "purged_split_boundary": 5,
+    "skipped_target_gaps": 19,
+    "skipped_replay_errors": 265
+  },
+
+  "created_at": "2026-10-06"
+}
