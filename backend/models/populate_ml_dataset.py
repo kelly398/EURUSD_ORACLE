@@ -24,12 +24,12 @@ TIMEFRAME = "M5"
 SOURCE = "MT5"
 FEATURE_VERSION = MLFeatureBuilder.FEATURE_VERSION
 LABEL_VERSION = "eurusd_m5_direction_v1"
+DATASET_VERSION = "eurusd_m5_dataset_v1"
 CANDLE_WINDOW = 200
 TIMEFRAME_MINUTES = 5
 TICK_LOOKBACK_MINUTES = 65
 HORIZON_BARS = 3
 NEUTRAL_BAND_PIPS = 1.0
-
 
 @dataclass
 class PopulationStats:
@@ -157,21 +157,7 @@ def load_batch_data(
                 Tick.id.asc(),
             )
         )
-        print(
-            "TICK QUERY RANGE:",
-            tick_load_start,
-            "to",
-            batch.end
-        )
         ticks = session.execute(tick_statement).scalars().all()
-        print(
-            "LOADED TICK RANGE:",
-            ticks[0].timestamp if ticks else None,
-            "to",
-            ticks[-1].timestamp if ticks else None,
-            "COUNT:",
-            len(ticks),
-        )
 
     return (
         convert_candles_to_samples(predecessors + batch_candles),
@@ -208,6 +194,7 @@ def insert_samples(samples):
             "feature_version": sample.features.feature_version,
             "label_version": sample.label_specification.label_version,
             "feature_timestamp": sample.feature_as_of,
+            "dataset_version": DATASET_VERSION,
             "target_timestamp": sample.target_available_at,
             "target_move_pips": sample.target_move_pips,
             "target_label": sample.target_label.value,
@@ -237,6 +224,7 @@ def existing_sample_count():
             MLTrainingSample.symbol == SYMBOL,
             MLTrainingSample.timeframe == TIMEFRAME,
             MLTrainingSample.feature_version == FEATURE_VERSION,
+            MLTrainingSample.dataset_version == DATASET_VERSION,
             MLTrainingSample.label_version == LABEL_VERSION,
         )
         return session.execute(statement).scalar_one()

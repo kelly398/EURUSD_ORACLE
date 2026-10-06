@@ -10,6 +10,7 @@ from backend.models.dataset_models import MLTrainingSample
 from backend.models.dataset_partitioning import ChronologicalSplitPlan
 from backend.models.feature_builder import MLFeatureBuilder
 from backend.models.populate_ml_dataset import (
+    DATASET_VERSION,
     FEATURE_VERSION,
     LABEL_VERSION,
     SYMBOL,
@@ -60,11 +61,13 @@ def main():
             MLTrainingSample.target_label,
             MLTrainingSample.feature_json,
             MLTrainingSample.split,
+            MLTrainingSample.dataset_version,
         )
         .where(
             MLTrainingSample.symbol == SYMBOL,
             MLTrainingSample.timeframe == TIMEFRAME,
             MLTrainingSample.feature_version == FEATURE_VERSION,
+            MLTrainingSample.dataset_version == DATASET_VERSION,
             MLTrainingSample.label_version == LABEL_VERSION,
         )
         .order_by(MLTrainingSample.feature_timestamp.asc())
@@ -79,6 +82,7 @@ def main():
             split = row.split
             target_label = row.target_label
             feature_json = row.feature_json
+            dataset_version = row.dataset_version
 
             first_feature = first_feature or feature_timestamp
             last_feature = feature_timestamp
@@ -92,6 +96,17 @@ def main():
                 target_timestamp,
             )
             def record_error(error):
+
+                if dataset_version != DATASET_VERSION:
+                    record_error(
+                        (
+                            row.id,
+                            "dataset_version_mismatch",
+                            dataset_version,
+                            DATASET_VERSION,
+                        )
+                    )
+
                 if len(integrity_errors) < 25:
                     integrity_errors.append(error)
 
@@ -155,6 +170,7 @@ def main():
     print(f"Train boundary:       {split_plan.train_end}")
     print(f"Validation boundary:  {split_plan.validation_end}")
     print(f"Expected features:    {len(expected_feature_names)}")
+    print(f"Dataset version:      {DATASET_VERSION}")
 
     print("\nSplit counts")
     for split in ("train", "validation", "test"):

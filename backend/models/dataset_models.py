@@ -49,6 +49,10 @@ class MLTrainingSample(
         nullable=False
     )
 
+    dataset_version = Column(
+        String,
+        nullable=False
+    )
 
     feature_timestamp = Column(
         DateTime(timezone=True),
@@ -89,29 +93,22 @@ class MLTrainingSample(
     __table_args__ = (
 
         UniqueConstraint(
-
             "symbol",
-
             "timeframe",
-
             "feature_timestamp",
-
             "feature_version",
-
+            "dataset_version",
             "label_version",
-
-            name=
-            "uq_ml_training_sample"
+            name="uq_ml_training_sample",
         ),
-
         Index(
             "ix_ml_training_samples_training_slice",
             "symbol",
             "timeframe",
             "feature_version",
+            "dataset_version",
             "label_version",
             "split",
-            "feature_timestamp"
+            "feature_timestamp",
         ),
-
     )

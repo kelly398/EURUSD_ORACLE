@@ -36,6 +36,8 @@ class HistoricalDatasetResult:
 
     skipped_replay_error: int
 
+    skipped_tick_context: int
+
 
 class HistoricalDatasetBuilder:
 
@@ -281,6 +283,8 @@ class HistoricalDatasetBuilder:
 
         skipped_replay_error = 0
 
+        skipped_tick_context = 0
+
 
         horizon = (
             self.label_specification
@@ -331,6 +335,8 @@ class HistoricalDatasetBuilder:
                 created_count=0,
 
                 skipped_target_gap=0,
+
+                skipped_replay_error=0,
 
                 skipped_tick_context=0
             )
@@ -515,8 +521,11 @@ class HistoricalDatasetBuilder:
                 len(samples),
 
             skipped_target_gap=
-                skipped_target_gap,
+                skipped_target_gap,   
 
             skipped_replay_error=
-                skipped_replay_error
+                skipped_replay_error,
+
+            skipped_tick_context=
+                skipped_tick_context
         )
