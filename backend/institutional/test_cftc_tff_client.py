@@ -491,6 +491,76 @@ def main():
         "PRE historical fallback: PASS"
     )
 
+    # ==================================
+    # 2023 ION PUBLICATION DELAY
+    # ==================================
+    #
+    # PRE provenance observed for the
+    # 2023-01-31 report:
+    #
+    # created_at:
+    # 2023-02-24T20:30:04.153Z
+    #
+    # This report was delayed during the
+    # ION cyber-related reporting incident.
+    # ==================================
+
+    ion_row = dict(
+        SAMPLE_ROW
+    )
+
+    ion_row[
+        "id"
+    ] = "230131099741F"
+
+    ion_row[
+        "report_date_as_yyyy_mm_dd"
+    ] = (
+        "2023-01-31T00:00:00.000"
+    )
+
+    ion_row[
+        ":created_at"
+    ] = (
+        "2023-02-24T20:30:04.153Z"
+    )
+
+    ion_row[
+        ":updated_at"
+    ] = (
+        "2023-02-24T20:30:04.153Z"
+    )
+
+
+    ion_snapshot = (
+        client.normalize_row(
+
+            row=ion_row,
+
+            ingested_at=
+                ingested_at
+        )
+    )
+
+
+    assert (
+        ion_snapshot.available_at
+        == datetime(
+            2023,
+            2,
+            24,
+            20,
+            30,
+            4,
+            153000,
+            tzinfo=timezone.utc
+        )
+    )
+
+
+    print(
+        "2023 ION delayed-release provenance: PASS"
+    )
 
     # ==================================
     # QUERY CONTRACT

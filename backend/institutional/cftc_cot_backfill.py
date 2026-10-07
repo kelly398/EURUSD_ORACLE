@@ -16,6 +16,11 @@ from backend.institutional.cot_storage import (
     COTPositioningStorage
 )
 
+CFTC_CAUSAL_BACKFILL_START_REPORT_DATE = date(
+    2022,
+    10,
+    18
+)
 
 @dataclass(
     frozen=True
@@ -91,6 +96,10 @@ class CFTCCOTBackfill:
         )
 
 
+        # ==================================
+        # DATE-RANGE VALIDATION
+        # ==================================
+
         if (
             end_report_date
             < start_report_date
@@ -101,6 +110,39 @@ class CFTCCOTBackfill:
                 "precede start_report_date."
             )
 
+
+        # ==================================
+        # CAUSAL HISTORICAL FLOOR
+        # ==================================
+        #
+        # 2022-10-18 is the first report date
+        # admitted to the ordinary PRE-native
+        # production backfill path.
+        #
+        # Earlier TFF history requires separate
+        # provenance reconstruction.
+        # ==================================
+
+        if (
+            start_report_date
+            < (
+                CFTC_CAUSAL_BACKFILL_START_REPORT_DATE
+            )
+        ):
+
+            raise ValueError(
+                "Production CFTC COT backfill "
+                "cannot precede "
+                "2022-10-18. Earlier TFF "
+                "history requires separate "
+                "historical provenance "
+                "reconstruction."
+            )
+
+
+        # ==================================
+        # LIMIT VALIDATION
+        # ==================================
 
         if limit <= 0:
 

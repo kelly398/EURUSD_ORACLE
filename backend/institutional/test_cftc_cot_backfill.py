@@ -417,6 +417,61 @@ def main():
     )
 
 
+    # ==================================
+    # PRE-NATIVE CAUSAL FLOOR
+    # ==================================
+
+    calls_before_floor_test = (
+        len(
+            client.calls
+        )
+    )
+
+
+    try:
+
+        backfill.run(
+
+            start_report_date=date(
+                2022,
+                10,
+                11
+            ),
+
+            end_report_date=date(
+                2022,
+                10,
+                18
+            ),
+
+            ingested_at=
+                ingested_at
+        )
+
+    except ValueError:
+
+        pass
+
+    else:
+
+        raise AssertionError(
+            "Pre-PRE causal history was "
+            "incorrectly admitted to the "
+            "production backfill."
+        )
+
+
+    assert (
+        len(
+            client.calls
+        )
+        == calls_before_floor_test
+    )
+
+
+    print(
+        "PRE-native causal floor: PASS"
+    )
     print(
         "\n"
         + "=" * 70
