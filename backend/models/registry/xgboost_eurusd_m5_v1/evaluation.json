@@ -1,0 +1,82 @@
+{
+  "model": "xgboost_eurusd_m5_v1",
+  "dataset_version": "eurusd_m5_full_20251002_20261001_v1",
+  "feature_version": "eurusd_m5_v1",
+  "label_version": "eurusd_m5_direction_v1",
+  "validation": {
+    "accuracy": 0.3963370624323349,
+    "macro_f1": 0.3969305063127881,
+    "confusion_matrix": [
+      [
+        1599,
+        957,
+        1318
+      ],
+      [
+        1091,
+        1520,
+        899
+      ],
+      [
+        1509,
+        917,
+        1274
+      ]
+    ],
+    "confidence": {
+      "average": 0.43348100781440735,
+      "thresholds": {
+        "0.6": {
+          "samples": 470,
+          "accuracy": 0.6127659574468085
+        },
+        "0.7": {
+          "samples": 117,
+          "accuracy": 0.6068376068376068
+        },
+        "0.8": {
+          "samples": 17,
+          "accuracy": 0.5882352941176471
+        }
+      }
+    }
+  },
+  "test": {
+    "accuracy": 0.4218359988906351,
+    "macro_f1": 0.41555399824171896,
+    "confusion_matrix": [
+      [
+        1434,
+        1128,
+        1022
+      ],
+      [
+        1006,
+        2038,
+        818
+      ],
+      [
+        1284,
+        996,
+        1091
+      ]
+    ],
+    "confidence": {
+      "average": 0.4428519010543823,
+      "thresholds": {
+        "0.6": {
+          "samples": 628,
+          "accuracy": 0.6512738853503185
+        },
+        "0.7": {
+          "samples": 182,
+          "accuracy": 0.6923076923076923
+        },
+        "0.8": {
+          "samples": 34,
+          "accuracy": 0.6470588235294118
+        }
+      }
+    }
+  }
+}
