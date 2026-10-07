@@ -78,6 +78,10 @@ from backend.agents.implementations.neural_network_agent import (
     NeuralNetworkAgent
 )
 
+from backend.agents.implementations.hidden_markov_model_agent import (
+    HiddenMarkovModelAgent,
+)
+
 def register_core_agents(
     registry
 ):
@@ -135,6 +139,11 @@ def register_core_agents(
     # Seat 12
     registry.register(
         NeuralNetworkAgent()
+    )
+
+    # Seat 13
+    registry.register(
+        HiddenMarkovModelAgent()
     )
 
     # Seat 14

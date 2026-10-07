@@ -263,7 +263,7 @@ def main():
 
     assert (
         result.succeeded_count
-        == 20
+        == 21
     )
 
 
@@ -277,7 +277,7 @@ def main():
         len(
             result.missing_agent_ids
         )
-        == 8
+        == 7
     )
 
 
@@ -305,6 +305,7 @@ def main():
             10,
             11,
             12,
+            13,
             14,
             15,
             16,
@@ -333,7 +334,7 @@ def main():
         len(
             result.opinions
         )
-        == 20
+        == 21
     )
 
 

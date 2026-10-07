@@ -215,10 +215,11 @@ COUNCIL_MANIFEST = (
             "regime-transition probabilities."
         ),
         required_inputs=(
-            "feature_vector",
+            "candles",
             "model_artifact"
         )
     ),
+
 
     AgentSpec(
         seat_number=14,

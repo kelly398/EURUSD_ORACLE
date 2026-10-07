@@ -235,7 +235,7 @@ def main():
 
     assert (
         registry.implemented_count
-        == 20
+        == 21
     )
 
 
@@ -243,7 +243,7 @@ def main():
         len(
             registry.missing_agent_ids
         )
-        == 11
+        == 10
     )
 
 
@@ -257,7 +257,11 @@ def main():
             "neural_network"
         )
     )
-
+    assert (
+        registry.is_registered(
+            "hidden_markov_model"
+        )
+    )
 
 
     # ==================================
@@ -363,7 +367,7 @@ def main():
 
     assert (
         result.succeeded_count
-        == 20
+        == 21
     )
 
 
@@ -376,7 +380,6 @@ def main():
     assert (
         result.missing_agent_ids
         == (
-            "hidden_markov_model",
             "cot_positioning",
             "dealer_behaviour",
             "ecb",
@@ -399,31 +402,14 @@ def main():
         in result.executions
     ]
 
-
     assert (
         seat_numbers
-        == [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-        ]
+        == list(
+            range(
+                1,
+                22,
+            )
+        )
     )
 
 
@@ -435,7 +421,7 @@ def main():
         len(
             result.opinions
         )
-        == 20
+        == 21
     )
 
 
@@ -448,17 +434,65 @@ def main():
 
 
     opinions_by_id = {
-
-        opinion.agent_id:
-            opinion
-
-        for opinion
-        in result.opinions
+        opinion.agent_id: opinion
+        for opinion in result.opinions
     }
+
+    hmm_opinion = opinions_by_id["hidden_markov_model"]
+
+    assert (
+        hmm_opinion.signal_type.value
+        == "contextual"
+    )
+
+    assert (
+        hmm_opinion.direction.value
+        == "neutral"
+    )
+
+    assert (
+        hmm_opinion.score
+        == 0.0
+    )
+
+    assert (
+        hmm_opinion.evidence["regime_available"]
+        is True
+    )
+
+    assert (
+        0.0
+        <= hmm_opinion.confidence
+        <= 1.0
+    )
+
+    assert (
+        0.0
+        <= hmm_opinion.evidence["switch_probability"]
+        <= 1.0
+    )
+
+    state_probability_sum = sum(
+        hmm_opinion.evidence[f"state_{state_index}_probability"]
+        for state_index in range(5)
+    )
+
+    assert (
+        abs(
+            state_probability_sum
+            - 1.0
+        )
+        < 0.00001
+    )
 
 
     assert (
         "ml_tree_ensemble"
+        in opinions_by_id
+    )
+
+    assert (
+        "hidden_markov_model"
         in opinions_by_id
     )
 
@@ -628,7 +662,7 @@ def main():
 
 
     print(
-        "\n20-agent registration: PASS"
+        "\n21-agent registration: PASS"
     )
 
     print(
@@ -645,6 +679,10 @@ def main():
 
     print(
         "Seat 12 Council integration: PASS"
+    )
+
+    print(
+        "Seat 13 hidden markov model: PASS"
     )
 
     print(

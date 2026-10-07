@@ -1,0 +1,137 @@
+{
+  "decision_status": "ACCEPTED_FOR_PRODUCTION_CONTEXTUAL",
+  "directional_diagnostics_secondary": {
+    "accuracy": 0.400596,
+    "brier_score": 0.659665,
+    "ece": 0.031886,
+    "log_loss": 1.087921,
+    "macro_f1": 0.356115
+  },
+  "full_reserved_test_evaluation": {
+    "agent_policy": {
+      "confidence": "1 - normalized_entropy(current_state_posterior)",
+      "direction": "neutral",
+      "directional_probabilities": "secondary_evidence_only",
+      "next_state_probability": "current_state_posterior @ transition_matrix",
+      "score": 0.0,
+      "signal_type": "contextual",
+      "switch_probability": "1 - sum(current_state_posterior * diag(transition_matrix))"
+    },
+    "aligned_test_observations": 10744,
+    "calibration_performed": false,
+    "dataset_version": "eurusd_m5_full_20251002_20261001_v1",
+    "directional_diagnostics_secondary": {
+      "accuracy": 0.4005956813104989,
+      "brier_score": 0.6596647912783928,
+      "confusion_matrix": [
+        [
+          801,
+          2138,
+          635
+        ],
+        [
+          502,
+          2861,
+          449
+        ],
+        [
+          685,
+          2031,
+          642
+        ]
+      ],
+      "ece": 0.03188551955309274,
+      "log_loss": 1.0879212925705561,
+      "macro_f1": 0.356115112375778
+    },
+    "dropped_unaligned_test_rows": 73,
+    "evaluation_type": "ONE_TIME_RESERVED_TEST",
+    "first_test_timestamp": "2026-08-07T09:40:00+00:00",
+    "hmm_feature_version": "eurusd_m5_hmm_obs_v1",
+    "label_version": "eurusd_m5_direction_v1",
+    "last_test_timestamp": "2026-09-30T23:45:00+00:00",
+    "log_likelihood": {
+      "test": -65637.33255013663,
+      "test_per_observation": -6.109208167361936,
+      "train_per_observation": -7.821784205435717,
+      "validation_per_observation": -6.815892729834507
+    },
+    "model_name": "hidden_markov_eurusd_m5_v1",
+    "parameter_sha256": "4383DE12C975E8B656F3931F27ADE954148905AC69FE8E9448099E0B6012D26F",
+    "posterior_certainty": {
+      "mean_context_confidence": 0.8981988581361822,
+      "mean_dominant_state_probability": 0.9333188181942376,
+      "mean_normalized_entropy": 0.10180114186381792,
+      "median_context_confidence": 0.9809348538804201,
+      "median_dominant_state_probability": 0.9952322205155479
+    },
+    "pre_test_selection_commit": "c79ba5c",
+    "refit_performed": false,
+    "regime_occupancy": {
+      "dominant_state_counts": [
+        325,
+        3677,
+        3890,
+        1386,
+        1466
+      ],
+      "mae": 0.09349067996330904,
+      "maximum_absolute_delta": 0.11854388988587489,
+      "test": [
+        0.030613616769358625,
+        0.3410843415987833,
+        0.35946291894534976,
+        0.13024113799808149,
+        0.13859798468842618
+      ],
+      "test_minus_train": [
+        -0.06528531823486236,
+        0.11518281002239913,
+        0.11854388988587489,
+        -0.08375348168496774,
+        -0.08468789998844106
+      ],
+      "train": [
+        0.09589893500422099,
+        0.22590153157638418,
+        0.24091902905947488,
+        0.21399461968304923,
+        0.22328588467686725
+      ]
+    },
+    "selected_seed": 11,
+    "selected_state_count": 5,
+    "selection_changed_after_test": false,
+    "source_feature_version": "eurusd_m5_v1",
+    "source_test_rows": 10817,
+    "state_names": [
+      "high_volatility_turbulence",
+      "mild_bearish_impulse",
+      "mild_bullish_impulse",
+      "strong_bearish_expansion",
+      "strong_bullish_expansion"
+    ],
+    "test_evaluated": true,
+    "test_sequence_count": 49
+  },
+  "production_monitoring": {
+    "track_dominant_state_probability": true,
+    "track_log_likelihood_per_observation": true,
+    "track_posterior_entropy": true,
+    "track_regime_occupancy_shift": true
+  },
+  "reserved_test": {
+    "aligned_observations": 10744,
+    "dropped_unaligned_rows": 73,
+    "mean_context_confidence": 0.898199,
+    "mean_dominant_state_probability": 0.933319,
+    "median_context_confidence": 0.980935,
+    "occupancy_mae_vs_train": 0.093491,
+    "occupancy_max_absolute_delta_vs_train": 0.118544,
+    "sequence_count": 49,
+    "source_rows": 10817,
+    "test_log_likelihood_per_observation": -6.109208,
+    "train_log_likelihood_per_observation": -7.821784,
+    "validation_log_likelihood_per_observation": -6.815893
+  }
+}
