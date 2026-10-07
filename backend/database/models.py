@@ -4,6 +4,7 @@ from sqlalchemy import (
     BigInteger,
     String,
     Float,
+    Date,
     DateTime,
     Boolean,
     UniqueConstraint,
@@ -15,7 +16,6 @@ from sqlalchemy.orm import declarative_base
 
 
 Base = declarative_base()
-
 
 class Tick(Base):
 
@@ -278,6 +278,212 @@ class BrokerCandle(Base):
         nullable=False,
         default="MT5"
     )
+
+    ingested_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now()
+    )
+
+class COTPositioning(Base):
+
+    __tablename__ = "cot_positioning"
+
+    __table_args__ = (
+
+        UniqueConstraint(
+            "report_type",
+            "cftc_contract_market_code",
+            "report_date",
+            "content_hash",
+            name="uq_cot_positioning_version"
+        ),
+
+        Index(
+            "ix_cot_positioning_contract_available",
+            "cftc_contract_market_code",
+            "report_type",
+            "available_at"
+        ),
+
+        Index(
+            "ix_cot_positioning_contract_report_date",
+            "cftc_contract_market_code",
+            "report_type",
+            "report_date"
+        ),
+    )
+
+
+    id = Column(
+        BigInteger,
+        primary_key=True,
+        autoincrement=True
+    )
+
+
+    report_type = Column(
+        String,
+        nullable=False,
+        index=True
+    )
+
+
+    cftc_contract_market_code = Column(
+        String,
+        nullable=False,
+        index=True
+    )
+
+
+    market_and_exchange_names = Column(
+        String,
+        nullable=False
+    )
+
+
+    contract_market_name = Column(
+        String,
+        nullable=False
+    )
+
+
+    commodity_name = Column(
+        String,
+        nullable=False
+    )
+
+
+    report_date = Column(
+        Date,
+        nullable=False,
+        index=True
+    )
+
+
+    # Earliest timestamp at which THIS EXACT
+    # record version is permitted in analysis.
+    #
+    # Original reports use the verified official
+    # publication timestamp.
+    #
+    # Later corrected versions receive their own
+    # later available_at value and never overwrite
+    # the original historical version.
+    available_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True
+    )
+
+
+    open_interest = Column(
+        BigInteger,
+        nullable=False
+    )
+
+
+    dealer_long = Column(
+        BigInteger,
+        nullable=False
+    )
+
+    dealer_short = Column(
+        BigInteger,
+        nullable=False
+    )
+
+    dealer_spread = Column(
+        BigInteger,
+        nullable=False
+    )
+
+
+    asset_manager_long = Column(
+        BigInteger,
+        nullable=False
+    )
+
+    asset_manager_short = Column(
+        BigInteger,
+        nullable=False
+    )
+
+    asset_manager_spread = Column(
+        BigInteger,
+        nullable=False
+    )
+
+
+    leveraged_money_long = Column(
+        BigInteger,
+        nullable=False
+    )
+
+    leveraged_money_short = Column(
+        BigInteger,
+        nullable=False
+    )
+
+    leveraged_money_spread = Column(
+        BigInteger,
+        nullable=False
+    )
+
+
+    other_reportables_long = Column(
+        BigInteger,
+        nullable=False
+    )
+
+    other_reportables_short = Column(
+        BigInteger,
+        nullable=False
+    )
+
+    other_reportables_spread = Column(
+        BigInteger,
+        nullable=False
+    )
+
+
+    nonreportable_long = Column(
+        BigInteger,
+        nullable=False
+    )
+
+    nonreportable_short = Column(
+        BigInteger,
+        nullable=False
+    )
+
+
+    # Identifier supplied by the upstream CFTC
+    # dataset. This is provenance, not our
+    # revision identity: an upstream system may
+    # reuse an ID when correcting a row.
+    source_record_id = Column(
+        String,
+        nullable=False
+    )
+
+
+    # SHA-256 of the normalized raw positioning
+    # fields. It allows ORACLE to retain and
+    # distinguish later corrections.
+    content_hash = Column(
+        String(64),
+        nullable=False,
+        index=True
+    )
+
+
+    source = Column(
+        String,
+        nullable=False,
+        default="CFTC"
+    )
+
 
     ingested_at = Column(
         DateTime(timezone=True),

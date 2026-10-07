@@ -37,6 +37,10 @@ from backend.market_state.session_engine import (
     SessionEngine
 )
 
+from backend.institutional.cot_schemas import (
+    COTPositioningSnapshot
+)
+
 
 DEBUG_REPLAY = False
 
@@ -124,6 +128,135 @@ class HistoricalReplayBuilder:
             >= self.liquidity_engine.minimum_baseline_ticks
         )
 
+    def _lock_cot_data_as_of(
+        self,
+        cot_data,
+        as_of
+    ):
+
+        """
+        Build the exact COT information set that
+        was legally available at `as_of`.
+
+        Rules:
+
+        1. Future/unreleased reports are excluded.
+        2. Future corrections are excluded.
+        3. For each report_date, use the newest
+           revision available by `as_of`.
+        4. Output is strictly chronological by
+           report_date.
+        """
+
+        cot_data = tuple(
+            cot_data
+        )
+
+
+        if not cot_data:
+
+            return tuple()
+
+
+        for item in cot_data:
+
+            if not isinstance(
+                item,
+                COTPositioningSnapshot
+            ):
+
+                raise TypeError(
+                    "Historical COT input must "
+                    "contain "
+                    "COTPositioningSnapshot."
+                )
+
+
+        eligible = tuple(
+
+            item
+
+            for item
+            in cot_data
+
+            if (
+                item.available_at
+                <= as_of
+            )
+        )
+
+
+        if not eligible:
+
+            return tuple()
+
+
+        latest_by_report_date = {}
+
+
+        for item in eligible:
+
+            existing = (
+                latest_by_report_date
+                .get(
+                    item.report_date
+                )
+            )
+
+
+            if existing is None:
+
+                latest_by_report_date[
+                    item.report_date
+                ] = item
+
+                continue
+
+
+            if (
+                item.available_at
+                > existing.available_at
+            ):
+
+                latest_by_report_date[
+                    item.report_date
+                ] = item
+
+                continue
+
+
+            if (
+                item.available_at
+                == existing.available_at
+
+                and
+
+                item.content_hash
+                != existing.content_hash
+            ):
+
+                raise ValueError(
+                    "Ambiguous COT revisions "
+                    "share the same report_date "
+                    "and available_at timestamp."
+                )
+
+
+        locked = tuple(
+
+            sorted(
+
+                latest_by_report_date.values(),
+
+                key=lambda item:
+                    item.report_date
+            )
+        )
+
+
+        return locked
+
+
 
     def __init__(
         self,
@@ -187,7 +320,8 @@ class HistoricalReplayBuilder:
         candles,
         ticks,
         anchor_timestamp,
-        ticks_prebounded=False
+        ticks_prebounded=False,
+        cot_data=tuple()
     ):
 
 
@@ -398,9 +532,6 @@ class HistoricalReplayBuilder:
                 "Historical replay requires "
                 "at least 140 candles."
             )
-
-
-
         as_of = (
 
             anchor_timestamp
@@ -411,8 +542,16 @@ class HistoricalReplayBuilder:
             )
 
         )
+        # ==================================
+        # COT SNAPSHOT LOCK
+        # ==================================
 
-
+        cot_window = (
+            self._lock_cot_data_as_of(
+                cot_data=cot_data,
+                as_of=as_of
+            )
+        )
 
         # ==================================
         # TICK VALIDATION + LOCK
@@ -707,9 +846,11 @@ class HistoricalReplayBuilder:
 
             candles=tuple(history),
 
-            ticks=tuple(tick_window)
+            ticks=tuple(tick_window),
 
-            )
+            cot_data=cot_window
+
+        )
 
         if DEBUG_REPLAY:
 

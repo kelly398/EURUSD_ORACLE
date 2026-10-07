@@ -16,6 +16,10 @@ from backend.market_state.schemas import (
     TickSample
 )
 
+from backend.institutional.cot_schemas import (
+    COTPositioningSnapshot
+)
+
 
 # ============================================================
 # EVIDENCE VALUE TYPE
@@ -159,6 +163,10 @@ class AgentContext(BaseModel):
         ...
     ] = tuple()
 
+    cot_data: tuple[
+        COTPositioningSnapshot,
+        ...
+    ] = tuple()
 
     @model_validator(
         mode="after"
@@ -354,13 +362,10 @@ class AgentContext(BaseModel):
                     "be in chronological order."
                 )
 
-
             if (
                 current.timestamp
                 == previous.timestamp
-
                 and
-
                 current.source_time_msc
                 < previous.source_time_msc
             ):
@@ -370,6 +375,92 @@ class AgentContext(BaseModel):
                     "invalid source-time order."
                 )
 
+        # ==================================
+        # OPTIONAL COT POSITIONING HISTORY
+        # ==================================
+        #
+        # COT information is governed by
+        # `available_at`, not merely the
+        # underlying report_date.
+        #
+        # No report or later correction may
+        # leak into a context before it was
+        # actually available.
+        # ==================================
+
+        for item in self.cot_data:
+
+            if (
+                item.available_at
+                > self.as_of
+            ):
+
+                raise ValueError(
+                    "AgentContext contains COT "
+                    "positioning that was not yet "
+                    "available at the analysis "
+                    "timestamp. Possible "
+                    "look-ahead leakage."
+                )
+
+        # Exactly one causal version may appear
+        # for each report_date, and the history
+        # must be strictly chronological by
+        # report_date.
+        for previous, current in zip(
+            self.cot_data,
+            self.cot_data[1:]
+        ):
+
+            if (
+                current.report_date
+                <= previous.report_date
+            ):
+
+                raise ValueError(
+                    "AgentContext COT history "
+                    "must be in strict "
+                    "report-date order with "
+                    "one version per report."
+                )
+
+        # A single context represents one
+        # coherent positioning series.
+        if self.cot_data:
+
+            first_report_type = (
+                self.cot_data[0]
+                .report_type
+            )
+
+            first_contract_code = (
+                self.cot_data[0]
+                .cftc_contract_market_code
+            )
+
+            for item in self.cot_data[1:]:
+
+                if (
+                    item.report_type
+                    != first_report_type
+                ):
+
+                    raise ValueError(
+                        "AgentContext contains "
+                        "mixed COT report types."
+                    )
+
+                if (
+                    item
+                    .cftc_contract_market_code
+                    != first_contract_code
+                ):
+
+                    raise ValueError(
+                        "AgentContext contains "
+                        "mixed COT contract "
+                        "market codes."
+                    )
 
         return self
 
