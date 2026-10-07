@@ -633,50 +633,24 @@ class DataQualityEngine:
 
 
             # =====================================
-            # 9. TICK DUPLICATE CHECK
+            # 9. TICK DUPLICATE PROTECTION
             # =====================================
-
-            tick_counts = (
-                session.query(
-                    func.count(
-                        Tick.id
-                    ),
-
-                    func.count(
-                        func.distinct(
-                            Tick.fingerprint
-                        )
-                    )
-                )
-                .filter(
-                    Tick.symbol
-                    == self.symbol
-                )
-                .one()
-            )
-
-
-            total_ticks = (
-                tick_counts[0]
-            )
-
-            unique_ticks = (
-                tick_counts[1]
-            )
-
-
-            if total_ticks != unique_ticks:
-
-                self._issue(
-                    report,
-                    "tick_duplicates",
-                    "CRITICAL",
-                    (
-                        f"{total_ticks - unique_ticks} "
-                        "duplicate tick(s) "
-                        "detected."
-                    )
-                )
+            #
+            # Tick duplication is enforced at the
+            # database-storage layer by the
+            # non-null UNIQUE constraint:
+            #
+            #     uq_tick_fingerprint
+            #
+            # A full COUNT(DISTINCT fingerprint)
+            # scan is intentionally not performed
+            # in the live quality path because the
+            # tick table contains tens of millions
+            # of rows and the database constraint
+            # already guarantees this invariant.
+            #
+            # Deep historical integrity audits
+            # belong in an offline audit workflow.
 
 
             # =====================================
