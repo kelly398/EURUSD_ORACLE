@@ -1,0 +1,76 @@
+{
+  "class_order": [
+    "short",
+    "neutral",
+    "long"
+  ],
+  "dirichlet_alpha": 1.0,
+  "labels_used": "TRAIN_ONLY",
+  "states": [
+    {
+      "effective_label_counts": {
+        "long": 4448.772568297743,
+        "neutral": 3095.3677639174985,
+        "short": 4434.16709900111
+      },
+      "probabilities": {
+        "long": 0.37139290464279484,
+        "neutral": 0.2584332120424651,
+        "short": 0.37017388331474005
+      },
+      "state": 0
+    },
+    {
+      "effective_label_counts": {
+        "long": 3818.053966247443,
+        "neutral": 5321.33992222439,
+        "short": 4005.062567274154
+      },
+      "probabilities": {
+        "long": 0.29047854078104646,
+        "neutral": 0.4048189807769476,
+        "short": 0.30470247844200604
+      },
+      "state": 1
+    },
+    {
+      "effective_label_counts": {
+        "long": 3846.4348381493087,
+        "neutral": 2282.414062227879,
+        "short": 3666.23224933473
+      },
+      "probabilities": {
+        "long": 0.3926722772920115,
+        "neutral": 0.23304706578134596,
+        "short": 0.3742806569266426
+      },
+      "state": 2
+    },
+    {
+      "effective_label_counts": {
+        "long": 2796.5558261461765,
+        "neutral": 894.7422995200264,
+        "short": 2786.318127088073
+      },
+      "probabilities": {
+        "long": 0.4316805249743354,
+        "neutral": 0.13821869164669856,
+        "short": 0.43010078337896596
+      },
+      "state": 3
+    },
+    {
+      "effective_label_counts": {
+        "long": 3170.1828011593293,
+        "neutral": 2267.1359521102017,
+        "short": 3564.219957301929
+      },
+      "probabilities": {
+        "long": 0.35217604178171996,
+        "neutral": 0.25188807833624804,
+        "short": 0.395935879882032
+      },
+      "state": 4
+    }
+  ]
+}

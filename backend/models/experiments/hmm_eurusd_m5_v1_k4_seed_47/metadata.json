@@ -1,0 +1,30 @@
+{
+  "artifact_status": "EXPERIMENT_ONLY",
+  "covariance_type": "diag",
+  "dataset_version": "eurusd_m5_full_20251002_20261001_v1",
+  "dirichlet_alpha": 1.0,
+  "feature_count": 8,
+  "feature_names": [
+    "return_1_pips",
+    "return_3_pips",
+    "body_pips",
+    "range_pips",
+    "close_location",
+    "realized_volatility_12_pips",
+    "trend_slope_12_pips_per_bar",
+    "log_tick_volume_ratio_12"
+  ],
+  "hmm_feature_version": "eurusd_m5_hmm_obs_v1",
+  "label_version": "eurusd_m5_direction_v1",
+  "model_name": "hidden_markov_eurusd_m5_v1",
+  "production_ready": false,
+  "reserved_test_loaded": false,
+  "seed": 47,
+  "source_feature_version": "eurusd_m5_v1",
+  "state_count": 4,
+  "test_evaluated": false,
+  "train_observations": 50397,
+  "train_sequences": 217,
+  "validation_observations": 11050,
+  "validation_sequences": 48
+}

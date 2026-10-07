@@ -1,0 +1,30 @@
+{
+  "directional_diagnostics": {
+    "accuracy": 0.39122171945701356,
+    "brier_score": 0.6569000867579251,
+    "confusion_matrix": [
+      [
+        1401,
+        1426,
+        1043
+      ],
+      [
+        853,
+        1855,
+        784
+      ],
+      [
+        1242,
+        1379,
+        1067
+      ]
+    ],
+    "ece": 0.010913757481602839,
+    "log_loss": 1.0832578302944167,
+    "macro_f1": 0.38657234040474125
+  },
+  "log_likelihood": -78774.96701547557,
+  "log_likelihood_per_observation": -7.128956290993265,
+  "selection_note": "Directional diagnostics are secondary and must not be used alone to select latent state count.",
+  "test_evaluated": false
+}

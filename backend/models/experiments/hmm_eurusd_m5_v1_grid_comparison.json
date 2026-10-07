@@ -1,0 +1,390 @@
+{
+  "candidate_count": 9,
+  "model": "hidden_markov_eurusd_m5_v1",
+  "reserved_test_evaluated": false,
+  "seeds": [
+    11,
+    29,
+    47
+  ],
+  "selection_status": "NOT_SELECTED",
+  "state_counts": [
+    3,
+    4,
+    5
+  ],
+  "summaries": [
+    {
+      "aic": {
+        "maximum": 884622.9122707718,
+        "mean": 884622.9122436488,
+        "minimum": 884622.9122068314,
+        "range": 6.394041702151299e-05,
+        "std": 2.698862357611094e-05
+      },
+      "bic": {
+        "maximum": 885117.2627387666,
+        "mean": 885117.2627116436,
+        "minimum": 885117.2626748262,
+        "range": 6.394041702151299e-05,
+        "std": 2.698862357611094e-05
+      },
+      "maximum_pairwise_emission_mean_rmse": 2.6039012397248058e-06,
+      "maximum_pairwise_occupancy_mae": 1.189165681721634e-06,
+      "maximum_pairwise_persistence_mae": 2.1290592725671984e-06,
+      "maximum_pairwise_state_outcome_mae": 1.5265949191804276e-07,
+      "maximum_pairwise_transition_mae": 1.479474390002807e-06,
+      "maximum_state_persistence_across_seeds": 0.8400348421443404,
+      "minimum_state_occupancy_across_seeds": 0.26268706820547816,
+      "pairwise_state_stability": [
+        {
+          "candidate_seed": 29,
+          "emission_mean_max_abs": 1.5687117814744411e-06,
+          "emission_mean_rmse": 6.982831233370321e-07,
+          "log_variance_rmse": 9.66088199461822e-07,
+          "max_matching_cost": 1.4283427386471376e-06,
+          "mean_matching_cost": 1.119856000817579e-06,
+          "occupancy_mae": 3.1889623684315066e-07,
+          "permutation_to_reference": [
+            1,
+            0,
+            2
+          ],
+          "persistence_mae": 5.709462015390798e-07,
+          "reference_seed": 11,
+          "start_probability_mae": 8.53828915449902e-07,
+          "state_outcome_probability_mae": 4.0938523589624985e-08,
+          "transition_mae": 3.967478587538209e-07,
+          "transition_max_abs": 8.420818158882959e-07
+        },
+        {
+          "candidate_seed": 47,
+          "emission_mean_max_abs": 5.84971773298637e-06,
+          "emission_mean_rmse": 2.6039012397248058e-06,
+          "log_variance_rmse": 3.6025418774454394e-06,
+          "max_matching_cost": 5.326290860753401e-06,
+          "mean_matching_cost": 4.17594714909811e-06,
+          "occupancy_mae": 1.189165681721634e-06,
+          "permutation_to_reference": [
+            0,
+            1,
+            2
+          ],
+          "persistence_mae": 2.1290592725671984e-06,
+          "reference_seed": 11,
+          "start_probability_mae": 3.1839347549023067e-06,
+          "state_outcome_probability_mae": 1.5265949191804276e-07,
+          "transition_mae": 1.479474390002807e-06,
+          "transition_max_abs": 3.1401209295567334e-06
+        },
+        {
+          "candidate_seed": 47,
+          "emission_mean_max_abs": 4.281005951511929e-06,
+          "emission_mean_rmse": 1.9056181163930134e-06,
+          "log_variance_rmse": 2.6364536780108687e-06,
+          "max_matching_cost": 3.8979481221126285e-06,
+          "mean_matching_cost": 3.056091148291709e-06,
+          "occupancy_mae": 8.702694448784835e-07,
+          "permutation_to_reference": [
+            1,
+            0,
+            2
+          ],
+          "persistence_mae": 1.5581130710281184e-06,
+          "reference_seed": 29,
+          "start_probability_mae": 2.3301058394524046e-06,
+          "state_outcome_probability_mae": 1.1172096832841778e-07,
+          "transition_mae": 1.082726531248986e-06,
+          "transition_max_abs": 2.2980391136684375e-06
+        }
+      ],
+      "state_count": 3,
+      "train_log_likelihood_per_observation": {
+        "maximum": -8.775432190475936,
+        "mean": -8.77543219084121,
+        "minimum": -8.775432191110303,
+        "range": 6.343672254160992e-10,
+        "std": 2.677600519313931e-10
+      },
+      "validation_accuracy": {
+        "maximum": 0.34886877828054297,
+        "mean": 0.3488687782805429,
+        "minimum": 0.34886877828054297,
+        "range": 0.0,
+        "std": 5.551115123125783e-17
+      },
+      "validation_log_likelihood_per_observation": {
+        "maximum": -7.816636388437113,
+        "mean": -7.816636458983948,
+        "minimum": -7.8166365553273405,
+        "range": 1.6689022785953966e-07,
+        "std": 7.053218582836279e-08
+      },
+      "validation_log_loss": {
+        "maximum": 1.0894765550186583,
+        "mean": 1.089476549100482,
+        "minimum": 1.0894765447667591,
+        "range": 1.0251899107416307e-08,
+        "std": 4.332684065164749e-09
+      },
+      "validation_macro_f1": {
+        "maximum": 0.27185320744254454,
+        "mean": 0.27185320744254454,
+        "minimum": 0.27185320744254454,
+        "range": 0.0,
+        "std": 0.0
+      }
+    },
+    {
+      "aic": {
+        "maximum": 820033.7972741209,
+        "mean": 820033.7972060532,
+        "minimum": 820033.7970851074,
+        "range": 0.00018901342991739511,
+        "std": 8.574603226582656e-05
+      },
+      "bic": {
+        "maximum": 820731.1845414706,
+        "mean": 820731.1844734028,
+        "minimum": 820731.1843524572,
+        "range": 0.00018901342991739511,
+        "std": 8.574603226580021e-05
+      },
+      "maximum_pairwise_emission_mean_rmse": 2.462446795954802e-05,
+      "maximum_pairwise_occupancy_mae": 6.01491033824092e-06,
+      "maximum_pairwise_persistence_mae": 1.7224222175593606e-05,
+      "maximum_pairwise_state_outcome_mae": 1.7429995587611713e-06,
+      "maximum_pairwise_transition_mae": 1.2793347103769532e-05,
+      "maximum_state_persistence_across_seeds": 0.8065261168703146,
+      "minimum_state_occupancy_across_seeds": 0.1396467107528057,
+      "pairwise_state_stability": [
+        {
+          "candidate_seed": 29,
+          "emission_mean_max_abs": 6.970668705763572e-05,
+          "emission_mean_rmse": 2.4015461046936112e-05,
+          "log_variance_rmse": 6.467864792893226e-05,
+          "max_matching_cost": 5.1531867853474304e-05,
+          "mean_matching_cost": 4.194882198121795e-05,
+          "occupancy_mae": 5.4884039460342815e-06,
+          "permutation_to_reference": [
+            0,
+            3,
+            1,
+            2
+          ],
+          "persistence_mae": 1.7224222175593606e-05,
+          "reference_seed": 11,
+          "start_probability_mae": 1.5301723968845493e-05,
+          "state_outcome_probability_mae": 1.7173666906044234e-06,
+          "transition_mae": 1.2793347103769532e-05,
+          "transition_max_abs": 4.1839023823375676e-05
+        },
+        {
+          "candidate_seed": 47,
+          "emission_mean_max_abs": 6.975623877325532e-05,
+          "emission_mean_rmse": 2.462446795954802e-05,
+          "log_variance_rmse": 6.152988581897236e-05,
+          "max_matching_cost": 5.132588357400587e-05,
+          "mean_matching_cost": 4.1353388222483805e-05,
+          "occupancy_mae": 6.01491033824092e-06,
+          "permutation_to_reference": [
+            2,
+            3,
+            0,
+            1
+          ],
+          "persistence_mae": 1.4921642276982672e-05,
+          "reference_seed": 11,
+          "start_probability_mae": 1.5024148102570772e-05,
+          "state_outcome_probability_mae": 1.7429995587611713e-06,
+          "transition_mae": 1.121190448103711e-05,
+          "transition_max_abs": 3.7417391063665484e-05
+        },
+        {
+          "candidate_seed": 47,
+          "emission_mean_max_abs": 4.1868263340738565e-06,
+          "emission_mean_rmse": 1.6182345193313502e-06,
+          "log_variance_rmse": 5.29833834185077e-06,
+          "max_matching_cost": 4.99915993220132e-06,
+          "mean_matching_cost": 3.16335711245798e-06,
+          "occupancy_mae": 6.004458050212769e-07,
+          "permutation_to_reference": [
+            2,
+            0,
+            1,
+            3
+          ],
+          "persistence_mae": 2.3025798986109347e-06,
+          "reference_seed": 29,
+          "start_probability_mae": 3.646284912998954e-07,
+          "state_outcome_probability_mae": 1.1227781035461071e-07,
+          "transition_mae": 1.6148655828091387e-06,
+          "transition_max_abs": 4.421632759710192e-06
+        }
+      ],
+      "state_count": 4,
+      "train_log_likelihood_per_observation": {
+        "maximum": -8.134172640088769,
+        "mean": -8.134172641288698,
+        "minimum": -8.134172641964014,
+        "range": 1.875244848292823e-09,
+        "std": 8.507056288033205e-10
+      },
+      "validation_accuracy": {
+        "maximum": 0.39122171945701356,
+        "mean": 0.39119155354449475,
+        "minimum": 0.391131221719457,
+        "range": 9.049773755653856e-05,
+        "std": 4.266104260551261e-05
+      },
+      "validation_log_likelihood_per_observation": {
+        "maximum": -7.128941334845414,
+        "mean": -7.128951602205639,
+        "minimum": -7.1289571807782375,
+        "range": 1.5845932823665976e-05,
+        "std": 7.269201873402882e-06
+      },
+      "validation_log_loss": {
+        "maximum": 1.0832584067578008,
+        "mean": 1.083258050011945,
+        "minimum": 1.0832578302944167,
+        "range": 5.764633841387479e-07,
+        "std": 2.545061625786474e-07
+      },
+      "validation_macro_f1": {
+        "maximum": 0.38657234040474125,
+        "mean": 0.3865415047114285,
+        "minimum": 0.3864812236944188,
+        "range": 9.111671032246971e-05,
+        "std": 4.262889505733229e-05
+      }
+    },
+    {
+      "aic": {
+        "maximum": 790519.6636407006,
+        "mean": 789237.8327080951,
+        "minimum": 788596.9172026877,
+        "range": 1922.746438012924,
+        "std": 906.3913447801134
+      },
+      "bic": {
+        "maximum": 791437.7430812623,
+        "mean": 790155.9121486567,
+        "minimum": 789514.9966432494,
+        "range": 1922.746438012924,
+        "std": 906.3913447801134
+      },
+      "maximum_pairwise_emission_mean_rmse": 0.2310499545441857,
+      "maximum_pairwise_occupancy_mae": 0.025723809409457354,
+      "maximum_pairwise_persistence_mae": 0.1539195616892186,
+      "maximum_pairwise_state_outcome_mae": 0.023496322233993044,
+      "maximum_pairwise_transition_mae": 0.11734064868242049,
+      "maximum_state_persistence_across_seeds": 0.8850052316654045,
+      "minimum_state_occupancy_across_seeds": 0.09589893500422099,
+      "pairwise_state_stability": [
+        {
+          "candidate_seed": 29,
+          "emission_mean_max_abs": 0.7837045936391225,
+          "emission_mean_rmse": 0.2310499545441857,
+          "log_variance_rmse": 0.45517529818084046,
+          "max_matching_cost": 0.5559526347087262,
+          "mean_matching_cost": 0.3534170762670205,
+          "occupancy_mae": 0.025723798781224206,
+          "permutation_to_reference": [
+            3,
+            0,
+            1,
+            2,
+            4
+          ],
+          "persistence_mae": 0.1539195616892186,
+          "reference_seed": 11,
+          "start_probability_mae": 0.04699558186473472,
+          "state_outcome_probability_mae": 0.023496322233993044,
+          "transition_mae": 0.11734064868242049,
+          "transition_max_abs": 0.4388628514425235
+        },
+        {
+          "candidate_seed": 47,
+          "emission_mean_max_abs": 7.0547308222979055e-06,
+          "emission_mean_rmse": 2.2050056976196947e-06,
+          "log_variance_rmse": 3.451849686579435e-06,
+          "max_matching_cost": 5.16416310450168e-06,
+          "mean_matching_cost": 3.3229131914665454e-06,
+          "occupancy_mae": 5.300180355383155e-07,
+          "permutation_to_reference": [
+            3,
+            0,
+            4,
+            1,
+            2
+          ],
+          "persistence_mae": 1.3973111387621807e-06,
+          "reference_seed": 11,
+          "start_probability_mae": 1.789720520872784e-06,
+          "state_outcome_probability_mae": 1.6740252611520864e-07,
+          "transition_mae": 8.752915147864585e-07,
+          "transition_max_abs": 2.5033848708999606e-06
+        },
+        {
+          "candidate_seed": 47,
+          "emission_mean_max_abs": 0.7837093638569756,
+          "emission_mean_rmse": 0.2310498523577742,
+          "log_variance_rmse": 0.45517478980938736,
+          "max_matching_cost": 0.5559549579038607,
+          "mean_matching_cost": 0.35341678054935455,
+          "occupancy_mae": 0.025723809409457354,
+          "permutation_to_reference": [
+            0,
+            4,
+            1,
+            3,
+            2
+          ],
+          "persistence_mae": 0.15391951483654856,
+          "reference_seed": 29,
+          "start_probability_mae": 0.04699389046128756,
+          "state_outcome_probability_mae": 0.023496232447174855,
+          "transition_mae": 0.11734057956249588,
+          "transition_max_abs": 0.4388605036537053
+        }
+      ],
+      "state_count": 5,
+      "train_log_likelihood_per_observation": {
+        "maximum": -7.821784205435717,
+        "mean": -7.828142872671935,
+        "minimum": -7.840860206368441,
+        "range": 0.019076000932723325,
+        "std": 0.00899251289541158
+      },
+      "validation_accuracy": {
+        "maximum": 0.39782805429864254,
+        "mean": 0.3929411764705882,
+        "minimum": 0.3904977375565611,
+        "range": 0.007330316742081455,
+        "std": 0.003455544451047385
+      },
+      "validation_log_likelihood_per_observation": {
+        "maximum": -6.815892640128179,
+        "mean": -6.8161295005774925,
+        "minimum": -6.81660313176979,
+        "range": 0.0007104916416116325,
+        "std": 0.0003349078298578934
+      },
+      "validation_log_loss": {
+        "maximum": 1.084078068887546,
+        "mean": 1.082816095855752,
+        "minimum": 1.08029215667578,
+        "range": 0.0037859122117660515,
+        "std": 0.001784694509462771
+      },
+      "validation_macro_f1": {
+        "maximum": 0.3957695072710567,
+        "mean": 0.3817616287359437,
+        "minimum": 0.3747576894683872,
+        "range": 0.021011817802669475,
+        "std": 0.00990506590221587
+      }
+    }
+  ]
+}
