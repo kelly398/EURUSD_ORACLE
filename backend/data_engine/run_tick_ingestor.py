@@ -1,7 +1,12 @@
+import signal
 import time
 
 from backend.data_engine.mt5_tick_ingestor import (
     MT5TickIngestor
+)
+
+from backend.runtime.process_lock import (
+    SingleInstanceLock
 )
 
 
@@ -10,7 +15,39 @@ LOOP_INTERVAL_SECONDS = 1
 RECONNECT_DELAY_SECONDS = 5
 
 
-def main():
+def _request_shutdown(
+    signum,
+    frame
+):
+
+    raise KeyboardInterrupt
+
+
+def _install_signal_handlers():
+
+    if hasattr(
+        signal,
+        "SIGBREAK"
+    ):
+
+        signal.signal(
+            signal.SIGBREAK,
+            _request_shutdown
+        )
+
+
+    if hasattr(
+        signal,
+        "SIGTERM"
+    ):
+
+        signal.signal(
+            signal.SIGTERM,
+            _request_shutdown
+        )
+
+
+def run_worker():
 
     ingestor = MT5TickIngestor(
 
@@ -55,9 +92,11 @@ def main():
                     flush=True
                 )
 
+
                 time.sleep(
                     RECONNECT_DELAY_SECONDS
                 )
+
 
                 continue
 
@@ -135,6 +174,39 @@ def main():
         "Tick ingestor stopped cleanly.",
         flush=True
     )
+
+
+def main():
+
+    _install_signal_handlers()
+
+
+    lock = (
+        SingleInstanceLock(
+            "tick_ingestor"
+        )
+    )
+
+
+    if not lock.acquire():
+
+        print(
+            "Another EUR/USD tick ingestor "
+            "is already running.",
+            flush=True
+        )
+
+        return
+
+
+    try:
+
+        run_worker()
+
+
+    finally:
+
+        lock.release()
 
 
 if __name__ == "__main__":

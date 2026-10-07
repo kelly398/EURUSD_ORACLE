@@ -24,7 +24,8 @@ class MT5TickIngestor:
         symbol="EURUSD",
         bootstrap_minutes=30,
         overlap_seconds=2,
-        catchup_window_minutes=60
+        catchup_window_minutes=60,
+        recovery_log_threshold_seconds=30
     ):
 
         if (
@@ -40,6 +41,10 @@ class MT5TickIngestor:
 
         self.symbol = (
             symbol
+        )
+
+        self.recovery_log_threshold_seconds = (
+            recovery_log_threshold_seconds
         )
 
         self.bootstrap_minutes = (
@@ -299,6 +304,27 @@ class MT5TickIngestor:
             )
         )
 
+        gap_seconds = max(
+            0.0,
+            (
+                date_to
+                - date_from
+            ).total_seconds()
+        )
+
+
+        verbose_recovery = (
+            gap_seconds
+            >= self.recovery_log_threshold_seconds
+        )
+
+        if verbose_recovery:
+            print(
+                "TICK RECOVERY | "
+                f"from={date_from.isoformat()} | "
+                f"to={date_to.isoformat()}",
+                flush=True
+            )
 
         if (
             date_from
@@ -306,14 +332,6 @@ class MT5TickIngestor:
         ):
 
             return 0
-
-
-        print(
-            "TICK RECOVERY | "
-            f"from={date_from.isoformat()} | "
-            f"to={date_to.isoformat()}",
-            flush=True
-        )
 
 
         total_fetched = 0
@@ -344,13 +362,15 @@ class MT5TickIngestor:
             )
 
 
-            print(
-                "TICK WINDOW | "
-                f"from={window_start.isoformat()} | "
-                f"to={window_end.isoformat()} | "
-                "fetching...",
-                flush=True
-            )
+            if verbose_recovery:
+
+                print(
+                    "TICK WINDOW | "
+                    f"from={window_start.isoformat()} | "
+                    f"to={window_end.isoformat()} | "
+                    "fetching...",
+                    flush=True
+                )
 
 
             ticks = (
@@ -399,14 +419,16 @@ class MT5TickIngestor:
             )
 
 
-            print(
-                "TICK WINDOW DONE | "
-                f"fetched={fetched} | "
-                f"inserted={inserted} | "
-                f"through="
-                f"{window_end.isoformat()}",
-                flush=True
-            )
+            if verbose_recovery:
+
+                print(
+                    "TICK WINDOW DONE | "
+                    f"fetched={fetched} | "
+                    f"inserted={inserted} | "
+                    f"through="
+                    f"{window_end.isoformat()}",
+                    flush=True
+                )
 
 
             del rows
@@ -419,13 +441,15 @@ class MT5TickIngestor:
             )
 
 
-        print(
-            "TICK INGEST COMPLETE | "
-            f"fetched={total_fetched} | "
-            f"inserted={total_inserted} | "
-            f"through={date_to.isoformat()}",
-            flush=True
-        )
+        if verbose_recovery:
+
+            print(
+                "TICK INGEST COMPLETE | "
+                f"fetched={total_fetched} | "
+                f"inserted={total_inserted} | "
+                f"through={date_to.isoformat()}",
+                flush=True
+            )
 
 
         return (

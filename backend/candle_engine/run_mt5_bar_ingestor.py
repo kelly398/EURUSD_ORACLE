@@ -1,7 +1,12 @@
+import signal
 import time
 
 from backend.candle_engine.mt5_bar_ingestor import (
     MT5BarIngestor
+)
+
+from backend.runtime.process_lock import (
+    SingleInstanceLock
 )
 
 
@@ -10,7 +15,39 @@ LOOP_INTERVAL_SECONDS = 5
 RECONNECT_DELAY_SECONDS = 5
 
 
-def main():
+def _request_shutdown(
+    signum,
+    frame
+):
+
+    raise KeyboardInterrupt
+
+
+def _install_signal_handlers():
+
+    if hasattr(
+        signal,
+        "SIGBREAK"
+    ):
+
+        signal.signal(
+            signal.SIGBREAK,
+            _request_shutdown
+        )
+
+
+    if hasattr(
+        signal,
+        "SIGTERM"
+    ):
+
+        signal.signal(
+            signal.SIGTERM,
+            _request_shutdown
+        )
+
+
+def run_worker():
 
     ingestor = MT5BarIngestor(
 
@@ -57,9 +94,11 @@ def main():
                     flush=True
                 )
 
+
                 time.sleep(
                     RECONNECT_DELAY_SECONDS
                 )
+
 
                 continue
 
@@ -137,6 +176,39 @@ def main():
         "M5 bar ingestor stopped cleanly.",
         flush=True
     )
+
+
+def main():
+
+    _install_signal_handlers()
+
+
+    lock = (
+        SingleInstanceLock(
+            "m5_bar_ingestor"
+        )
+    )
+
+
+    if not lock.acquire():
+
+        print(
+            "Another EUR/USD M5 bar "
+            "ingestor is already running.",
+            flush=True
+        )
+
+        return
+
+
+    try:
+
+        run_worker()
+
+
+    finally:
+
+        lock.release()
 
 
 if __name__ == "__main__":
