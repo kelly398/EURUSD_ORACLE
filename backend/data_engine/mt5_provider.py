@@ -23,26 +23,93 @@ class MT5Provider(MarketDataProvider):
         self.connected = False
 
 
-    def connect(self):
+    def is_healthy(
+        self
+    ):
 
-        if mt5.initialize():
+        if not self.connected:
 
-            self.connected = True
+            return False
+
+
+        terminal = (
+            mt5.terminal_info()
+        )
+
+
+        if terminal is None:
+
+            return False
+
+
+        return bool(
+            terminal.connected
+        )
+
+
+    def connect(
+        self
+    ):
+
+        if self.is_healthy():
+
             return True
+
+
+        # Clean any stale local MT5
+        # Python API state before
+        # attempting a reconnect.
+        mt5.shutdown()
+
+        self.connected = False
+
+
+        if mt5.initialize(
+            timeout=10000
+        ):
+
+            terminal = (
+                mt5.terminal_info()
+            )
+
+
+            if (
+                terminal is not None
+                and
+                terminal.connected
+            ):
+
+                self.connected = True
+
+                return True
+
+
+            mt5.shutdown()
+
 
         print(
             "MT5 INITIALIZATION ERROR:",
-            mt5.last_error()
+            mt5.last_error(),
+            flush=True
         )
+
+
+        self.connected = False
 
         return False
 
 
-    def disconnect(self):
+    def disconnect(
+        self
+    ):
 
-        mt5.shutdown()
+        try:
 
-        self.connected = False
+            mt5.shutdown()
+
+        finally:
+
+            self.connected = False
 
 
     def get_price(
@@ -61,6 +128,12 @@ class MT5Provider(MarketDataProvider):
         )
 
         if tick is None:
+
+            print(
+                "MT5 PRICE ERROR:",
+                mt5.last_error(),
+                flush=True
+            )
 
             return None
 

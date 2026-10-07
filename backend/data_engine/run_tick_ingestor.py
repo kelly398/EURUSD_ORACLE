@@ -5,59 +5,138 @@ from backend.data_engine.mt5_tick_ingestor import (
 )
 
 
+LOOP_INTERVAL_SECONDS = 1
+
+RECONNECT_DELAY_SECONDS = 5
+
+
 def main():
 
     ingestor = MT5TickIngestor(
+
         symbol="EURUSD",
+
         bootstrap_minutes=30,
-        overlap_seconds=2
+
+        overlap_seconds=2,
+
+        catchup_window_minutes=60
     )
-
-
-    if not ingestor.connect():
-
-        print(
-            "Unable to connect to MT5."
-        )
-
-        return
 
 
     print(
-        "EUR/USD MT5 Tick Ingestor started."
+        "EUR/USD MT5 Tick Ingestor started.",
+        flush=True
     )
+
 
     print(
-        "Mode: historical recovery + live ingestion"
+        "Mode: bounded recovery + "
+        "continuous live ingestion",
+        flush=True
     )
 
 
-    try:
+    while True:
 
-        while True:
+        try:
 
-            ingestor.ingest_once()
+            # ==================================
+            # CONNECT / RECONNECT
+            # ==================================
 
-            time.sleep(1)
+            if not ingestor.connect():
+
+                print(
+                    "MT5 unavailable. "
+                    f"Retrying in "
+                    f"{RECONNECT_DELAY_SECONDS} "
+                    "seconds...",
+                    flush=True
+                )
+
+                time.sleep(
+                    RECONNECT_DELAY_SECONDS
+                )
+
+                continue
 
 
-    except KeyboardInterrupt:
+            print(
+                "Tick ingestor connected "
+                "to MT5.",
+                flush=True
+            )
 
-        print(
-            "\nTick ingestor stopping..."
+
+            # ==================================
+            # INGESTION LOOP
+            # ==================================
+
+            while True:
+
+                if not (
+                    ingestor.provider
+                    .is_healthy()
+                ):
+
+                    raise RuntimeError(
+                        "MT5 connection became "
+                        "unhealthy."
+                    )
+
+
+                ingestor.ingest_once()
+
+
+                time.sleep(
+                    LOOP_INTERVAL_SECONDS
+                )
+
+
+        except KeyboardInterrupt:
+
+            print(
+                "\nTick ingestor stopping...",
+                flush=True
+            )
+
+            break
+
+
+        except Exception as error:
+
+            print(
+                "TICK INGESTOR ERROR | "
+                f"{type(error).__name__}: "
+                f"{error}",
+                flush=True
+            )
+
+
+            print(
+                "Tick ingestor will attempt "
+                "reconnection.",
+                flush=True
+            )
+
+
+        finally:
+
+            ingestor.disconnect()
+
+
+        time.sleep(
+            RECONNECT_DELAY_SECONDS
         )
 
 
-    finally:
-
-        ingestor.disconnect()
-
-        print(
-            "MT5 disconnected cleanly."
-        )
+    print(
+        "Tick ingestor stopped cleanly.",
+        flush=True
+    )
 
 
 if __name__ == "__main__":
 
     main()
-    

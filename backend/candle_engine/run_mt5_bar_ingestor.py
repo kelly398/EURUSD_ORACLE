@@ -5,6 +5,11 @@ from backend.candle_engine.mt5_bar_ingestor import (
 )
 
 
+LOOP_INTERVAL_SECONDS = 5
+
+RECONNECT_DELAY_SECONDS = 5
+
+
 def main():
 
     ingestor = MT5BarIngestor(
@@ -21,51 +26,119 @@ def main():
     )
 
 
-    if not ingestor.connect():
-
-        print(
-            "Unable to connect to MT5."
-        )
-
-        return
-
-
     print(
         "EUR/USD Canonical M5 "
-        "Bar Ingestor started."
+        "Bar Ingestor started.",
+        flush=True
     )
+
 
     print(
-        "Source: HFM / MT5"
+        "Source: HFM / MT5",
+        flush=True
     )
 
 
-    try:
+    while True:
 
-        while True:
+        try:
 
-            ingestor.ingest_once()
+            # ==================================
+            # CONNECT / RECONNECT
+            # ==================================
 
-            time.sleep(5)
+            if not ingestor.connect():
+
+                print(
+                    "MT5 unavailable. "
+                    f"Retrying in "
+                    f"{RECONNECT_DELAY_SECONDS} "
+                    "seconds...",
+                    flush=True
+                )
+
+                time.sleep(
+                    RECONNECT_DELAY_SECONDS
+                )
+
+                continue
 
 
-    except KeyboardInterrupt:
+            print(
+                "M5 bar ingestor connected "
+                "to MT5.",
+                flush=True
+            )
 
-        print(
-            "\nM5 bar ingestor stopping..."
+
+            # ==================================
+            # INGESTION LOOP
+            # ==================================
+
+            while True:
+
+                if not (
+                    ingestor.provider
+                    .is_healthy()
+                ):
+
+                    raise RuntimeError(
+                        "MT5 connection became "
+                        "unhealthy."
+                    )
+
+
+                ingestor.ingest_once()
+
+
+                time.sleep(
+                    LOOP_INTERVAL_SECONDS
+                )
+
+
+        except KeyboardInterrupt:
+
+            print(
+                "\nM5 bar ingestor stopping...",
+                flush=True
+            )
+
+            break
+
+
+        except Exception as error:
+
+            print(
+                "M5 INGESTOR ERROR | "
+                f"{type(error).__name__}: "
+                f"{error}",
+                flush=True
+            )
+
+
+            print(
+                "M5 bar ingestor will attempt "
+                "reconnection.",
+                flush=True
+            )
+
+
+        finally:
+
+            ingestor.disconnect()
+
+
+        time.sleep(
+            RECONNECT_DELAY_SECONDS
         )
 
 
-    finally:
-
-        ingestor.disconnect()
-
-        print(
-            "MT5 disconnected cleanly."
-        )
+    print(
+        "M5 bar ingestor stopped cleanly.",
+        flush=True
+    )
 
 
 if __name__ == "__main__":
 
     main()
-    
