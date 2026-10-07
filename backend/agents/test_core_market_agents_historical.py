@@ -235,7 +235,7 @@ def main():
 
     assert (
         registry.implemented_count
-        == 21
+        == 22
     )
 
 
@@ -243,7 +243,7 @@ def main():
         len(
             registry.missing_agent_ids
         )
-        == 10
+        == 9
     )
 
 
@@ -367,7 +367,7 @@ def main():
 
     assert (
         result.succeeded_count
-        == 21
+        == 22
     )
 
 
@@ -380,7 +380,6 @@ def main():
     assert (
         result.missing_agent_ids
         == (
-            "cot_positioning",
             "dealer_behaviour",
             "ecb",
             "fed",
@@ -407,7 +406,7 @@ def main():
         == list(
             range(
                 1,
-                22,
+                23,
             )
         )
     )
@@ -421,7 +420,7 @@ def main():
         len(
             result.opinions
         )
-        == 21
+        == 22
     )
 
 
@@ -662,7 +661,7 @@ def main():
 
 
     print(
-        "\n21-agent registration: PASS"
+        "\nCouncil registration: PASS"
     )
 
     print(

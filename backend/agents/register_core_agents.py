@@ -81,6 +81,9 @@ from backend.agents.implementations.neural_network_agent import (
 from backend.agents.implementations.hidden_markov_model_agent import (
     HiddenMarkovModelAgent,
 )
+from backend.agents.implementations.cot_positioning_agent import (
+    COTPositioningAgent
+)
 
 def register_core_agents(
     registry
@@ -184,6 +187,10 @@ def register_core_agents(
     # Seat 21
     registry.register(
         NewYorkSessionAgent()
+    )
+    # Seat 22
+    registry.register(
+        COTPositioningAgent()
     )
     
 
