@@ -23,10 +23,24 @@ class MT5TickIngestor:
         self,
         symbol="EURUSD",
         bootstrap_minutes=30,
-        overlap_seconds=2
+        overlap_seconds=2,
+        catchup_window_minutes=60
     ):
 
-        self.symbol = symbol
+        if (
+            catchup_window_minutes
+            <= 0
+        ):
+
+            raise ValueError(
+                "catchup_window_minutes must "
+                "be greater than zero."
+            )
+
+
+        self.symbol = (
+            symbol
+        )
 
         self.bootstrap_minutes = (
             bootstrap_minutes
@@ -36,9 +50,19 @@ class MT5TickIngestor:
             overlap_seconds
         )
 
-        self.provider = MT5Provider()
+        self.catchup_window_minutes = (
+            catchup_window_minutes
+        )
 
-        self.storage = BatchTickStorage()
+
+        self.provider = (
+            MT5Provider()
+        )
+
+
+        self.storage = (
+            BatchTickStorage()
+        )
 
 
     def _convert_tick(
@@ -47,57 +71,105 @@ class MT5TickIngestor:
     ):
 
         time_msc = int(
-            tick["time_msc"]
+            tick[
+                "time_msc"
+            ]
         )
+
 
         bid = float(
-            tick["bid"]
+            tick[
+                "bid"
+            ]
         )
+
 
         ask = float(
-            tick["ask"]
+            tick[
+                "ask"
+            ]
         )
+
 
         last = float(
-            tick["last"]
+            tick[
+                "last"
+            ]
         )
+
 
         volume = float(
-            tick["volume"]
+            tick[
+                "volume"
+            ]
         )
+
 
         flags = int(
-            tick["flags"]
+            tick[
+                "flags"
+            ]
         )
+
 
         volume_real = float(
-            tick["volume_real"]
+            tick[
+                "volume_real"
+            ]
         )
 
-        timestamp = datetime.fromtimestamp(
-            time_msc / 1000,
-            tz=timezone.utc
+
+        timestamp = (
+            datetime.fromtimestamp(
+
+                time_msc
+                / 1000.0,
+
+                tz=timezone.utc
+            )
         )
 
-        spread = ask - bid
+
+        spread = (
+            ask - bid
+        )
+
 
         spread_pips = round(
-            spread * 10000,
+            spread * 10000.0,
             6
         )
 
+
         fingerprint = (
             create_tick_fingerprint(
-                symbol=self.symbol,
-                time_msc=time_msc,
-                bid=bid,
-                ask=ask,
-                last=last,
-                volume=volume,
-                flags=flags,
-                volume_real=volume_real
+
+                symbol=
+                    self.symbol,
+
+                time_msc=
+                    time_msc,
+
+                bid=
+                    bid,
+
+                ask=
+                    ask,
+
+                last=
+                    last,
+
+                volume=
+                    volume,
+
+                flags=
+                    flags,
+
+                volume_real=
+                    volume_real
             )
         )
+
 
         return {
 
@@ -139,13 +211,16 @@ class MT5TickIngestor:
         }
 
 
-    def ingest_once(self):
+    def ingest_once(
+        self
+    ):
 
         latest_price = (
             self.provider.get_price(
                 self.symbol
             )
         )
+
 
         if latest_price is None:
 
@@ -157,7 +232,9 @@ class MT5TickIngestor:
 
 
         broker_now_msc = int(
-            latest_price["time_msc"]
+            latest_price[
+                "time_msc"
+            ]
         )
 
 
@@ -172,88 +249,201 @@ class MT5TickIngestor:
         if latest_stored_msc is None:
 
             date_from = (
+
                 datetime.fromtimestamp(
-                    broker_now_msc / 1000,
+
+                    broker_now_msc
+                    / 1000.0,
+
                     tz=timezone.utc
                 )
+
                 - timedelta(
                     minutes=
-                    self.bootstrap_minutes
+                        self.bootstrap_minutes
                 )
             )
+
 
         else:
 
             start_msc = (
+
                 latest_stored_msc
+
                 - (
                     self.overlap_seconds
                     * 1000
                 )
             )
 
+
             date_from = (
                 datetime.fromtimestamp(
-                    start_msc / 1000,
+
+                    start_msc
+                    / 1000.0,
+
                     tz=timezone.utc
                 )
             )
 
 
-        date_to = datetime.fromtimestamp(
-            broker_now_msc / 1000,
-            tz=timezone.utc
-        )
+        date_to = (
+            datetime.fromtimestamp(
 
+                broker_now_msc
+                / 1000.0,
 
-        ticks = (
-            self.provider.get_ticks_range(
-                self.symbol,
-                date_from,
-                date_to
+                tz=timezone.utc
             )
         )
 
 
-        if len(ticks) == 0:
+        if (
+            date_from
+            >= date_to
+        ):
 
             return 0
 
 
-        rows = [
-
-            self._convert_tick(
-                tick
-            )
-
-            for tick in ticks
-        ]
-
-
-        inserted = (
-            self.storage.save_batch(
-                rows
-            )
+        print(
+            "TICK RECOVERY | "
+            f"from={date_from.isoformat()} | "
+            f"to={date_to.isoformat()}",
+            flush=True
         )
+
+
+        total_fetched = 0
+
+        total_inserted = 0
+
+
+        window_start = (
+            date_from
+        )
+
+
+        while (
+            window_start
+            < date_to
+        ):
+
+            window_end = min(
+
+                window_start
+
+                + timedelta(
+                    minutes=
+                        self.catchup_window_minutes
+                ),
+
+                date_to
+            )
+
+
+            print(
+                "TICK WINDOW | "
+                f"from={window_start.isoformat()} | "
+                f"to={window_end.isoformat()} | "
+                "fetching...",
+                flush=True
+            )
+
+
+            ticks = (
+                self.provider
+                .get_ticks_range(
+
+                    self.symbol,
+
+                    window_start,
+
+                    window_end
+                )
+            )
+
+
+            fetched = (
+                len(ticks)
+            )
+
+
+            rows = [
+
+                self._convert_tick(
+                    tick
+                )
+
+                for tick
+                in ticks
+            ]
+
+
+            inserted = (
+                self.storage.save_batch(
+                    rows
+                )
+            )
+
+
+            total_fetched += (
+                fetched
+            )
+
+
+            total_inserted += (
+                inserted
+            )
+
+
+            print(
+                "TICK WINDOW DONE | "
+                f"fetched={fetched} | "
+                f"inserted={inserted} | "
+                f"through="
+                f"{window_end.isoformat()}",
+                flush=True
+            )
+
+
+            del rows
+
+            del ticks
+
+
+            window_start = (
+                window_end
+            )
 
 
         print(
-            f"TICK INGEST | "
-            f"fetched={len(ticks)} | "
-            f"inserted={inserted} | "
-            f"through={date_to.isoformat()}"
+            "TICK INGEST COMPLETE | "
+            f"fetched={total_fetched} | "
+            f"inserted={total_inserted} | "
+            f"through={date_to.isoformat()}",
+            flush=True
         )
 
 
-        return inserted
+        return (
+            total_inserted
+        )
 
 
-    def connect(self):
+    def connect(
+        self
+    ):
 
-        return self.provider.connect()
+        return (
+            self.provider.connect()
+        )
 
 
-    def disconnect(self):
+    def disconnect(
+        self
+    ):
 
         self.provider.disconnect()
-        

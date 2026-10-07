@@ -8,10 +8,33 @@ from backend.database.connection import (
     SessionLocal
 )
 
-from backend.database.models import Tick
+from backend.database.models import (
+    Tick
+)
 
 
 class BatchTickStorage:
+
+    INSERT_BATCH_SIZE = 5000
+
+
+    @staticmethod
+    def _chunked(
+        rows,
+        size
+    ):
+
+        for start in range(
+            0,
+            len(rows),
+            size
+        ):
+
+            yield rows[
+                start:
+                start + size
+            ]
+
 
     def get_latest_time_msc(
         self,
@@ -45,36 +68,72 @@ class BatchTickStorage:
     ):
 
         if not rows:
+
             return 0
+
+
+        inserted = 0
 
         session = SessionLocal()
 
+
         try:
 
-            statement = (
-                insert(Tick)
-                .values(rows)
-                .on_conflict_do_nothing(
-                    index_elements=[
-                        "fingerprint"
-                    ]
+            for batch in self._chunked(
+                rows,
+                self.INSERT_BATCH_SIZE
+            ):
+
+                statement = (
+
+                    insert(
+                        Tick
+                    )
+
+                    .values(
+                        batch
+                    )
+
+                    .on_conflict_do_nothing(
+                        index_elements=[
+                            "fingerprint"
+                        ]
+                    )
                 )
-            )
 
-            result = session.execute(
-                statement
-            )
 
-            session.commit()
+                result = (
+                    session.execute(
+                        statement
+                    )
+                )
 
-            return result.rowcount or 0
+
+                session.commit()
+
+
+                if (
+                    result.rowcount
+                    is not None
+                    and
+                    result.rowcount > 0
+                ):
+
+                    inserted += (
+                        result.rowcount
+                    )
+
+
+            return inserted
+
 
         except Exception:
 
             session.rollback()
+
             raise
+
 
         finally:
 
             session.close()
-            
