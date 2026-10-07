@@ -9,3 +9,7 @@ uvicorn
 pytest
 pydantic
 tzdata
+scikit-learn
+xgboost
+joblib
+torch
