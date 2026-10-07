@@ -1,0 +1,55 @@
+{
+  "model_name": "hidden_markov_eurusd_m5_v1",
+  "decision_status": "ACCEPTED_FOR_PRODUCTION_CONTEXTUAL",
+  "model_role": "latent_market_regime_context",
+  "selected_state_count": 5,
+  "selected_seed": 11,
+  "selected_candidate": "hmm_eurusd_m5_v1_k5_seed_11",
+  "pre_test_selection_commit": "c79ba5c",
+  "parameter_sha256": "4383DE12C975E8B656F3931F27ADE954148905AC69FE8E9448099E0B6012D26F",
+  "reserved_test": {
+    "source_rows": 10817,
+    "aligned_observations": 10744,
+    "dropped_unaligned_rows": 73,
+    "sequence_count": 49,
+    "train_log_likelihood_per_observation": -7.821784,
+    "validation_log_likelihood_per_observation": -6.815893,
+    "test_log_likelihood_per_observation": -6.109208,
+    "occupancy_mae_vs_train": 0.093491,
+    "occupancy_max_absolute_delta_vs_train": 0.118544,
+    "mean_context_confidence": 0.898199,
+    "median_context_confidence": 0.980935,
+    "mean_dominant_state_probability": 0.933319
+  },
+  "directional_diagnostics_secondary": {
+    "accuracy": 0.400596,
+    "macro_f1": 0.356115,
+    "log_loss": 1.087921,
+    "brier_score": 0.659665,
+    "ece": 0.031886
+  },
+  "state_semantics": [
+    "high_volatility_turbulence",
+    "mild_bearish_impulse",
+    "mild_bullish_impulse",
+    "strong_bearish_expansion",
+    "strong_bullish_expansion"
+  ],
+  "agent_policy": {
+    "signal_type": "contextual",
+    "score": 0.0,
+    "direction": "neutral",
+    "confidence": "1 - normalized_entropy(current_state_posterior)",
+    "directional_probabilities": "secondary_evidence_only"
+  },
+  "production_monitoring": {
+    "track_regime_occupancy_shift": true,
+    "track_log_likelihood_per_observation": true,
+    "track_posterior_entropy": true,
+    "track_dominant_state_probability": true
+  },
+  "refit_performed_after_test": false,
+  "calibration_performed_after_test": false,
+  "model_selection_changed_after_test": false,
+  "reserved_test_evaluated": true
+}
