@@ -70,6 +70,10 @@ from backend.agents.implementations.new_york_session_agent import (
     NewYorkSessionAgent
 )
 
+from backend.agents.implementations.ml_tree_ensemble_agent import (
+    MLTreeEnsembleAgent
+)
+
 def register_core_agents(
     registry
 ):
@@ -119,6 +123,10 @@ def register_core_agents(
         MonteCarloAgent()
     )
 
+    # Seat 11
+    registry.register(
+        MLTreeEnsembleAgent()
+    )
 
     # Seat 14
     registry.register(

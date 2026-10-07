@@ -263,7 +263,7 @@ def main():
 
     assert (
         result.succeeded_count
-        == 18
+        == 19
     )
 
 
@@ -277,7 +277,7 @@ def main():
         len(
             result.missing_agent_ids
         )
-        == 10
+        == 9
     )
 
 
@@ -303,6 +303,7 @@ def main():
             8,
             9,
             10,
+            11,
             14,
             15,
             16,
@@ -347,12 +348,36 @@ def main():
         in result.opinions
     }
 
+    assert (
+        "ml_tree_ensemble"
+        in opinions_by_id
+    )
+
+    ml_opinion = (
+        opinions_by_id[
+            "ml_tree_ensemble"
+        ]
+    )
+
+    assert (
+        ml_opinion.evidence[
+            "feature_count"
+        ]
+        == 27
+    )
+
+    assert (
+        ml_opinion.evidence[
+            "feature_version"
+        ]
+        == "eurusd_m5_v1"
+    )
+
     london_opinion = (
         opinions_by_id[
             "london_session"
         ]
     )
-
 
     new_york_opinion = (
         opinions_by_id[
@@ -360,12 +385,10 @@ def main():
         ]
     )
 
-
     assert (
         london_opinion.as_of
         == context.as_of
     )
-
 
     assert (
         new_york_opinion.as_of

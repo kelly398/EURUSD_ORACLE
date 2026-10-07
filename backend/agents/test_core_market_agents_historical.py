@@ -1,0 +1,569 @@
+from datetime import (
+    datetime,
+    timedelta,
+    timezone
+)
+
+from backend.agents.agent_registry import (
+    AgentRegistry
+)
+
+from backend.agents.council_runner import (
+    CouncilRunner
+)
+
+from backend.agents.register_core_agents import (
+    register_core_agents
+)
+
+from backend.market_state.candle_repository import (
+    CandleRepository
+)
+
+from backend.market_state.tick_repository import (
+    TickRepository
+)
+
+from backend.models.historical_replay import (
+    HistoricalReplayBuilder
+)
+
+
+def main():
+
+    print(
+        "=" * 70
+    )
+
+    print(
+        "EUR/USD ORACLE "
+        "HISTORICAL CORE COUNCIL TEST"
+    )
+
+    print(
+        "=" * 70
+    )
+
+
+    # ==================================
+    # FIXED HISTORICAL SNAPSHOT
+    # ==================================
+
+    anchor = datetime(
+        2026,
+        9,
+        30,
+        12,
+        0,
+        tzinfo=timezone.utc
+    )
+
+
+    as_of = (
+        anchor
+        + timedelta(
+            minutes=5
+        )
+    )
+
+
+    print(
+        f"\nHistorical anchor: "
+        f"{anchor}"
+    )
+
+
+    # ==================================
+    # LOAD HISTORICAL MARKET DATA
+    # ==================================
+
+    candle_repository = (
+        CandleRepository(
+            source="MT5"
+        )
+    )
+
+
+    tick_repository = (
+        TickRepository()
+    )
+
+
+    candles = (
+        candle_repository
+        .get_latest_as_of(
+
+            latest_timestamp=
+                anchor,
+
+            symbol=
+                "EURUSD",
+
+            timeframe=
+                "M5",
+
+            limit=
+                200
+        )
+    )
+
+
+    ticks = (
+        tick_repository
+        .get_between(
+
+            start=(
+                as_of
+                - timedelta(
+                    minutes=65
+                )
+            ),
+
+            end=
+                as_of,
+
+            symbol=
+                "EURUSD"
+        )
+    )
+
+
+    print(
+        f"Candles loaded: "
+        f"{len(candles)}"
+    )
+
+    print(
+        f"Ticks loaded: "
+        f"{len(ticks)}"
+    )
+
+
+    assert (
+        len(candles)
+        == 200
+    )
+
+
+    assert (
+        len(ticks)
+        > 0
+    )
+
+
+    # ==================================
+    # BUILD HISTORICAL AGENT CONTEXT
+    # ==================================
+
+    replay_builder = (
+        HistoricalReplayBuilder(
+
+            symbol="EURUSD",
+
+            timeframe="M5",
+
+            timeframe_minutes=5,
+
+            candle_limit=200,
+
+            tick_lookback_minutes=65
+        )
+    )
+
+
+    replay = (
+        replay_builder.build(
+
+            candles=
+                candles,
+
+            ticks=
+                ticks,
+
+            anchor_timestamp=
+                anchor
+        )
+    )
+
+
+    context = (
+        replay.context
+    )
+
+
+    print(
+        f"Replay as-of: "
+        f"{context.as_of}"
+    )
+
+    print(
+        f"Replay candles: "
+        f"{replay.candle_count}"
+    )
+
+    print(
+        f"Replay ticks: "
+        f"{replay.tick_count}"
+    )
+
+
+    # ==================================
+    # REGISTER REAL COUNCIL AGENTS
+    # ==================================
+
+    registry = (
+        AgentRegistry()
+    )
+
+
+    register_core_agents(
+        registry
+    )
+
+
+    print(
+        f"\nImplemented Council agents: "
+        f"{registry.implemented_count}"
+    )
+
+
+    print(
+        f"Remaining Council agents: "
+        f"{len(registry.missing_agent_ids)}"
+    )
+
+
+    assert (
+        registry.implemented_count
+        == 19
+    )
+
+
+    assert (
+        len(
+            registry.missing_agent_ids
+        )
+        == 12
+    )
+
+
+    assert (
+        registry.is_registered(
+            "ml_tree_ensemble"
+        )
+    )
+
+
+    # ==================================
+    # RUN REAL PRIMARY COUNCIL
+    # ==================================
+
+    runner = (
+        CouncilRunner(
+
+            registry=registry,
+
+            max_workers=4
+        )
+    )
+
+
+    result = (
+        runner.run_primary(
+
+            context=context,
+
+            require_all_registered=False
+        )
+    )
+
+
+    print(
+        f"\nSuccessful agents: "
+        f"{result.succeeded_count}"
+    )
+
+    print(
+        f"Failed agents: "
+        f"{result.failed_count}"
+    )
+
+    print(
+        f"Missing primary agents: "
+        f"{len(result.missing_agent_ids)}"
+    )
+
+
+    print(
+        "\n"
+        + "-" * 70
+    )
+
+    print(
+        "HISTORICAL COUNCIL EXECUTIONS"
+    )
+
+    print(
+        "-" * 70
+    )
+
+
+    for execution in result.executions:
+
+        print(
+            f"{execution.seat_number:02d} | "
+            f"{execution.agent_name:<28} | "
+            f"{execution.status.value:<7} | "
+            f"{execution.duration_ms:9.2f} ms"
+        )
+
+
+        if (
+            execution.opinion
+            is not None
+        ):
+
+            opinion = (
+                execution.opinion
+            )
+
+
+            print(
+                "     "
+                f"direction="
+                f"{opinion.direction.value} "
+                f"score="
+                f"{opinion.score:.4f} "
+                f"confidence="
+                f"{opinion.confidence:.4f}"
+            )
+
+
+        if (
+            execution.error
+            is not None
+        ):
+
+            print(
+                "     "
+                f"ERROR: "
+                f"{execution.error}"
+            )
+
+
+    # ==================================
+    # COUNCIL CONTRACT
+    # ==================================
+
+    assert (
+        result.succeeded_count
+        == 19
+    )
+
+
+    assert (
+        result.failed_count
+        == 0
+    )
+
+
+    assert (
+        result.missing_agent_ids
+        == (
+            "neural_network",
+            "hidden_markov_model",
+            "cot_positioning",
+            "dealer_behaviour",
+            "ecb",
+            "fed",
+            "rate_differential",
+            "economic_calendar",
+            "risk_sentiment",
+        )
+    )
+
+
+    # CouncilRunner must restore
+    # deterministic seat order after
+    # parallel execution.
+    seat_numbers = [
+
+        execution.seat_number
+
+        for execution
+        in result.executions
+    ]
+
+
+    assert (
+        seat_numbers
+        == [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+        ]
+    )
+
+
+    # ==================================
+    # OPINION CONTRACT
+    # ==================================
+
+    assert (
+        len(
+            result.opinions
+        )
+        == 19
+    )
+
+
+    for opinion in result.opinions:
+
+        assert (
+            opinion.as_of
+            == context.as_of
+        )
+
+
+    opinions_by_id = {
+
+        opinion.agent_id:
+            opinion
+
+        for opinion
+        in result.opinions
+    }
+
+
+    assert (
+        "ml_tree_ensemble"
+        in opinions_by_id
+    )
+
+
+    ml_opinion = (
+        opinions_by_id[
+            "ml_tree_ensemble"
+        ]
+    )
+
+
+    assert (
+        ml_opinion.evidence[
+            "feature_count"
+        ]
+        == 27
+    )
+
+
+    assert (
+        ml_opinion.evidence[
+            "feature_version"
+        ]
+        == "eurusd_m5_v1"
+    )
+
+
+    probability_sum = (
+
+        ml_opinion.evidence[
+            "short_probability"
+        ]
+
+        + ml_opinion.evidence[
+            "neutral_probability"
+        ]
+
+        + ml_opinion.evidence[
+            "long_probability"
+        ]
+    )
+
+
+    assert (
+        abs(
+            probability_sum
+            - 1.0
+        )
+        < 0.00001
+    )
+
+
+    # ==================================
+    # ANTI-LOOKAHEAD
+    # ==================================
+
+    assert (
+        context.candles[-1].timestamp
+        == anchor
+    )
+
+
+    assert (
+        context.candles[-1].timestamp
+        < context.as_of
+    )
+
+
+    assert (
+        context.ticks[-1].timestamp
+        < context.as_of
+    )
+
+
+    print(
+        "\n19-agent registration: PASS"
+    )
+
+    print(
+        "Parallel Council execution: PASS"
+    )
+
+    print(
+        "Deterministic seat ordering: PASS"
+    )
+
+    print(
+        "Seat 11 Council integration: PASS"
+    )
+
+    print(
+        "Historical anti-lookahead: PASS"
+    )
+
+
+    print(
+        "\n"
+        + "=" * 70
+    )
+
+    print(
+        "HISTORICAL CORE COUNCIL "
+        "TEST: PASS"
+    )
+
+    print(
+        "=" * 70
+    )
+
+
+if __name__ == "__main__":
+
+    main()
+    
