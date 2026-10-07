@@ -263,7 +263,7 @@ def main():
 
     assert (
         result.succeeded_count
-        == 19
+        == 20
     )
 
 
@@ -277,7 +277,7 @@ def main():
         len(
             result.missing_agent_ids
         )
-        == 9
+        == 8
     )
 
 
@@ -304,6 +304,7 @@ def main():
             9,
             10,
             11,
+            12,
             14,
             15,
             16,
@@ -326,6 +327,13 @@ def main():
     assert (
         context.ticks[-1].timestamp
         < context.as_of
+    )
+
+    assert (
+        len(
+            result.opinions
+        )
+        == 20
     )
 
 
@@ -371,6 +379,91 @@ def main():
             "feature_version"
         ]
         == "eurusd_m5_v1"
+    )
+
+    assert (
+        "neural_network"
+        in opinions_by_id
+    )
+
+    neural_opinion = (
+        opinions_by_id[
+            "neural_network"
+        ]
+    )
+
+    assert (
+        neural_opinion.evidence[
+            "feature_count"
+        ]
+        == 27
+    )
+
+    assert (
+        neural_opinion.evidence[
+            "feature_version"
+        ]
+        == "eurusd_m5_v1"
+    )
+
+    assert (
+        neural_opinion.evidence[
+            "member_count"
+        ]
+        == 3
+    )
+
+    assert (
+        neural_opinion.evidence[
+            "model_name"
+        ]
+        == "neural_network_eurusd_m5_v1"
+    )
+
+    neural_probability_sum = (
+        neural_opinion.evidence[
+            "short_probability"
+        ]
+        + neural_opinion.evidence[
+            "neutral_probability"
+        ]
+        + neural_opinion.evidence[
+            "long_probability"
+        ]
+    )
+
+    assert (
+        abs(
+            neural_probability_sum
+            - 1.0
+        )
+        < 0.00001
+    )
+
+    assert (
+        0.0
+        <= neural_opinion.evidence[
+            "ensemble_disagreement"
+        ]
+        <= 1.0
+    )
+
+    assert (
+        neural_opinion.confidence
+        == neural_opinion.evidence[
+            "ensemble_adjusted_confidence"
+        ]
+    )
+
+    assert (
+        neural_opinion.evidence[
+            "member_vote_agreement"
+        ]
+        in (
+            1.0 / 3.0,
+            2.0 / 3.0,
+            1.0
+        )
     )
 
     london_opinion = (

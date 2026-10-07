@@ -1,0 +1,73 @@
+{
+  "model_name": "neural_network_eurusd_m5_v1",
+  "artifact_version": "1.0.0",
+  "artifact_status": "PRODUCTION",
+  "production_ready": true,
+  "promoted_at": "2026-10-07T10:16:59.530983+00:00",
+  "dataset_version": "eurusd_m5_full_20251002_20261001_v1",
+  "feature_version": "eurusd_m5_v1",
+  "label_version": "eurusd_m5_direction_v1",
+  "symbol": "EURUSD",
+  "timeframe": "M5",
+  "feature_count": 27,
+  "features": [
+    "atr_pips",
+    "average_spread_pips",
+    "hour_cos",
+    "hour_sin",
+    "latest_body_pips",
+    "latest_range_pips",
+    "london_active",
+    "momentum_score",
+    "new_york_active",
+    "realized_volatility",
+    "return_12_pips",
+    "return_1_pips",
+    "return_3_pips",
+    "return_6_pips",
+    "session_overlap",
+    "spread_state_code",
+    "structure_score",
+    "tick_activity_ratio",
+    "tick_net_mid_move_pips",
+    "tick_spread_ratio",
+    "tick_update_imbalance",
+    "tokyo_active",
+    "trend_score",
+    "trend_slope_pips_per_bar",
+    "volatility_regime_code",
+    "weekday_cos",
+    "weekday_sin"
+  ],
+  "classes": [
+    0,
+    1,
+    2
+  ],
+  "class_mapping": {
+    "0": "short",
+    "1": "neutral",
+    "2": "long"
+  },
+  "ensemble_method": "mean_probability",
+  "member_seeds": [
+    11,
+    29,
+    47
+  ],
+  "member_files": [
+    "member_11.pt",
+    "member_29.pt",
+    "member_47.pt"
+  ],
+  "normalization_file": "normalization.npz",
+  "architecture_file": "architecture.json",
+  "calibration_file": "calibration.json",
+  "temperature": 1.4667860400137656,
+  "parameters_per_member": 278065,
+  "member_count": 3,
+  "total_parameters": 834195,
+  "test_accuracy": 0.42350004622353704,
+  "test_macro_f1": 0.41559549417426195,
+  "test_log_loss": 1.0650730683127383
+}

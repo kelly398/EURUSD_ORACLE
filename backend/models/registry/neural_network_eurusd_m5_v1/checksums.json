@@ -1,0 +1,13 @@
+{
+  "algorithm": "SHA256",
+  "files": {
+    "member_11.pt": "25a52ae1bf0fdec1f8a4bb815556893c1a77383de69248634a5dc8a69e58d7f4",
+    "member_29.pt": "ac219cae772545a860a18981b822db2e926c90d5705d2d42eb5126063a71d702",
+    "member_47.pt": "e5caf0cf035eda104682c8881fa15cd84ebda98f2a6ec0ad9e078892c710c019",
+    "normalization.npz": "9d1cfad522b842ba485818124bc352372edf8776d9ed909a1b585c9663c7e6d7",
+    "architecture.json": "3fb3df326afe799cbd3d9ba52748a0452f2ae8bf53a281f0ec0b0af182f4882a",
+    "calibration.json": "d31d9bb82392e787d95d1f230e32397f50e7842af8e216aa02c0584be440e48d",
+    "evaluation.json": "351b19d26a9b0f05e723c87ff14794cabfa5806ee53427951b02e10bbd1fbf5d",
+    "metadata.json": "7d33fab0c74dfdac7503583b7d6d4bd4a5cfdfd64b0a5038fbc437284f0d6248"
+  }
+}

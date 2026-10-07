@@ -1,0 +1,16 @@
+{
+  "model_name": "neural_network_eurusd_m5_v1",
+  "method": "ensemble_probability_temperature_scaling",
+  "temperature": 1.4667860400137656,
+  "member_seeds": [
+    11,
+    29,
+    47
+  ],
+  "dataset_version": "eurusd_m5_full_20251002_20261001_v1",
+  "feature_version": "eurusd_m5_v1",
+  "label_version": "eurusd_m5_direction_v1",
+  "calibration_samples": 3326,
+  "fitted_at": "2026-10-07T10:09:46.902678+00:00",
+  "test_evaluated": false
+}

@@ -1,0 +1,17 @@
+{
+  "note": "Metrics are reported on the same calibration rows used to fit temperature and therefore are fit-set diagnostics, not unbiased evaluation.",
+  "before_calibration": {
+    "accuracy": 0.3938665063138906,
+    "macro_f1": 0.39031434299628787,
+    "log_loss": 1.079448938369751,
+    "multiclass_brier_score": 0.653215918249319,
+    "expected_calibration_error": 0.04762411707148662
+  },
+  "after_calibration": {
+    "accuracy": 0.3938665063138906,
+    "macro_f1": 0.39031434299628787,
+    "log_loss": 1.0747061899614345,
+    "multiclass_brier_score": 0.650599652041051,
+    "expected_calibration_error": 0.020776203717916393
+  }
+}

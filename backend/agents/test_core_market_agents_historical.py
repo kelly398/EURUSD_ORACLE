@@ -235,7 +235,7 @@ def main():
 
     assert (
         registry.implemented_count
-        == 19
+        == 20
     )
 
 
@@ -243,7 +243,7 @@ def main():
         len(
             registry.missing_agent_ids
         )
-        == 12
+        == 11
     )
 
 
@@ -252,6 +252,12 @@ def main():
             "ml_tree_ensemble"
         )
     )
+    assert (
+        registry.is_registered(
+            "neural_network"
+        )
+    )
+
 
 
     # ==================================
@@ -357,7 +363,7 @@ def main():
 
     assert (
         result.succeeded_count
-        == 19
+        == 20
     )
 
 
@@ -370,7 +376,6 @@ def main():
     assert (
         result.missing_agent_ids
         == (
-            "neural_network",
             "hidden_markov_model",
             "cot_positioning",
             "dealer_behaviour",
@@ -409,6 +414,7 @@ def main():
             9,
             10,
             11,
+            12,
             14,
             15,
             16,
@@ -429,7 +435,7 @@ def main():
         len(
             result.opinions
         )
-        == 19
+        == 20
     )
 
 
@@ -504,6 +510,100 @@ def main():
         < 0.00001
     )
 
+    # ==================================
+    # SEAT 12 NEURAL CONTRACT
+    # ==================================
+
+    assert (
+        "neural_network"
+        in opinions_by_id
+    )
+
+
+    neural_opinion = (
+        opinions_by_id[
+            "neural_network"
+        ]
+    )
+
+
+    assert (
+        neural_opinion.evidence[
+            "feature_count"
+        ]
+        == 27
+    )
+
+
+    assert (
+        neural_opinion.evidence[
+            "feature_version"
+        ]
+        == "eurusd_m5_v1"
+    )
+
+
+    assert (
+        neural_opinion.evidence[
+            "member_count"
+        ]
+        == 3
+    )
+
+
+    neural_probability_sum = (
+
+        neural_opinion.evidence[
+            "short_probability"
+        ]
+
+        + neural_opinion.evidence[
+            "neutral_probability"
+        ]
+
+        + neural_opinion.evidence[
+            "long_probability"
+        ]
+    )
+
+
+    assert (
+        abs(
+            neural_probability_sum
+            - 1.0
+        )
+        < 0.00001
+    )
+
+
+    assert (
+        0.0
+        <= neural_opinion.evidence[
+            "ensemble_disagreement"
+        ]
+        <= 1.0
+    )
+
+
+    assert (
+        neural_opinion.confidence
+        == neural_opinion.evidence[
+            "ensemble_adjusted_confidence"
+        ]
+    )
+
+
+    assert (
+        neural_opinion.evidence[
+            "member_vote_agreement"
+        ]
+        in (
+            1.0 / 3.0,
+            2.0 / 3.0,
+            1.0,
+        )
+    )
+
 
     # ==================================
     # ANTI-LOOKAHEAD
@@ -528,7 +628,7 @@ def main():
 
 
     print(
-        "\n19-agent registration: PASS"
+        "\n20-agent registration: PASS"
     )
 
     print(
@@ -541,6 +641,10 @@ def main():
 
     print(
         "Seat 11 Council integration: PASS"
+    )
+
+    print(
+        "Seat 12 Council integration: PASS"
     )
 
     print(

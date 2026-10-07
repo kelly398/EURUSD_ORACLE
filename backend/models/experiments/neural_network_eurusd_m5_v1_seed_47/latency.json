@@ -1,0 +1,10 @@
+{
+  "warmup_iterations": 200,
+  "measured_iterations": 2000,
+  "mean_ms": 0.7816080999999999,
+  "median_ms": 0.6117,
+  "p95_ms": 1.3709049999999998,
+  "p99_ms": 2.111919,
+  "minimum_ms": 0.5646,
+  "maximum_ms": 3.8587
+}

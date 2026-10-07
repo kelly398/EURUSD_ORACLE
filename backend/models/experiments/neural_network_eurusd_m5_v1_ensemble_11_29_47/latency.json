@@ -1,0 +1,11 @@
+{
+  "members": 3,
+  "warmup_iterations": 200,
+  "measured_iterations": 2000,
+  "mean_ms": 2.3456121000000003,
+  "median_ms": 1.9911,
+  "p95_ms": 3.4722049999999998,
+  "p99_ms": 4.722001,
+  "minimum_ms": 1.8319,
+  "maximum_ms": 7.6517
+}

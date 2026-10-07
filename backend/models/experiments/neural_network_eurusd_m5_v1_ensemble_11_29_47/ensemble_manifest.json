@@ -1,0 +1,22 @@
+{
+  "model_name": "neural_network_eurusd_m5_v1",
+  "artifact_status": "EXPERIMENT_ONLY",
+  "production_ready": false,
+  "ensemble_method": "mean_probability",
+  "member_seeds": [
+    11,
+    29,
+    47
+  ],
+  "member_directories": [
+    "C:\\Users\\user\\EURUSD_ORACLE\\backend\\models\\experiments\\neural_network_eurusd_m5_v1_seed_11",
+    "C:\\Users\\user\\EURUSD_ORACLE\\backend\\models\\experiments\\neural_network_eurusd_m5_v1_seed_29",
+    "C:\\Users\\user\\EURUSD_ORACLE\\backend\\models\\experiments\\neural_network_eurusd_m5_v1_seed_47"
+  ],
+  "dataset_version": "eurusd_m5_full_20251002_20261001_v1",
+  "feature_version": "eurusd_m5_v1",
+  "label_version": "eurusd_m5_direction_v1",
+  "validation_samples": 7758,
+  "calibration_evaluated": false,
+  "test_evaluated": false
+}

@@ -1,0 +1,157 @@
+{
+  "model_name": "neural_network_eurusd_m5_v1",
+  "evaluation_status": "FINAL_TEST_EVALUATION",
+  "evaluated_at": "2026-10-07T10:11:54.261706+00:00",
+  "dataset_version": "eurusd_m5_full_20251002_20261001_v1",
+  "feature_version": "eurusd_m5_v1",
+  "label_version": "eurusd_m5_direction_v1",
+  "test_samples": 10817,
+  "ensemble_method": "mean_probability",
+  "member_seeds": [
+    11,
+    29,
+    47
+  ],
+  "temperature": 1.4667860400137656,
+  "class_predictions_preserved_after_calibration": true,
+  "raw_ensemble": {
+    "accuracy": 0.42350004622353704,
+    "macro_f1": 0.41559549417426195,
+    "log_loss": 1.0654809474945068,
+    "multiclass_brier_score": 0.644083119614504,
+    "expected_calibration_error": 0.02019036063603975,
+    "confusion_matrix": [
+      [
+        1364,
+        1208,
+        1012
+      ],
+      [
+        920,
+        2123,
+        819
+      ],
+      [
+        1183,
+        1094,
+        1094
+      ]
+    ],
+    "confidence_analysis": {
+      "0.5": {
+        "samples": 1893,
+        "coverage": 0.17500231117685125,
+        "accuracy": 0.5525620707871104
+      },
+      "0.55": {
+        "samples": 1020,
+        "coverage": 0.09429601553110845,
+        "accuracy": 0.5882352941176471
+      },
+      "0.6": {
+        "samples": 550,
+        "coverage": 0.05084589072755847,
+        "accuracy": 0.6454545454545455
+      },
+      "0.65": {
+        "samples": 283,
+        "coverage": 0.026162521956180088,
+        "accuracy": 0.696113074204947
+      },
+      "0.7": {
+        "samples": 127,
+        "coverage": 0.011740778404363501,
+        "accuracy": 0.7086614173228346
+      },
+      "0.75": {
+        "samples": 46,
+        "coverage": 0.004252565406304891,
+        "accuracy": 0.7391304347826086
+      },
+      "0.8": {
+        "samples": 2,
+        "coverage": 0.00018489414810021263,
+        "accuracy": 1.0
+      }
+    }
+  },
+  "calibrated_ensemble": {
+    "accuracy": 0.42350004622353704,
+    "macro_f1": 0.41559549417426195,
+    "log_loss": 1.0650730683127383,
+    "multiclass_brier_score": 0.6440428659559942,
+    "expected_calibration_error": 0.014569215171401494,
+    "confusion_matrix": [
+      [
+        1364,
+        1208,
+        1012
+      ],
+      [
+        920,
+        2123,
+        819
+      ],
+      [
+        1183,
+        1094,
+        1094
+      ]
+    ],
+    "confidence_analysis": {
+      "0.5": {
+        "samples": 736,
+        "coverage": 0.06804104650087825,
+        "accuracy": 0.6154891304347826
+      },
+      "0.55": {
+        "samples": 295,
+        "coverage": 0.02727188684478136,
+        "accuracy": 0.6983050847457627
+      },
+      "0.6": {
+        "samples": 99,
+        "coverage": 0.009152260330960525,
+        "accuracy": 0.7575757575757576
+      },
+      "0.65": {
+        "samples": 15,
+        "coverage": 0.0013867061107515947,
+        "accuracy": 0.8666666666666667
+      },
+      "0.7": {
+        "samples": 0,
+        "coverage": 0.0,
+        "accuracy": null
+      },
+      "0.75": {
+        "samples": 0,
+        "coverage": 0.0,
+        "accuracy": null
+      },
+      "0.8": {
+        "samples": 0,
+        "coverage": 0.0,
+        "accuracy": null
+      }
+    }
+  },
+  "ensemble_disagreement": {
+    "unanimous_class_rate": 0.7039844688915596,
+    "two_to_one_class_rate": 0.28159378755662384,
+    "all_different_class_rate": 0.014421743551816585,
+    "mean_pairwise_class_agreement": 0.7978490647437675,
+    "probability_disagreement_mean": 0.026635639369487762,
+    "probability_disagreement_median": 0.02439538948237896,
+    "probability_disagreement_p95": 0.05180885270237923,
+    "probability_disagreement_max": 0.10667123645544052
+  },
+  "seat_11_xgboost_comparator": {
+    "accuracy": 0.4218359988906351,
+    "macro_f1": 0.41555399824171896,
+    "log_loss": 1.064770221710205
+  },
+  "test_set_consumed": true,
+  "v1_frozen_after_test": true,
+  "note": "This is the final untouched test evaluation for Seat 12 v1. Future architecture or training changes must use a new model version rather than tuning v1 against these results."
+}

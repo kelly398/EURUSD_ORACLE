@@ -74,6 +74,10 @@ from backend.agents.implementations.ml_tree_ensemble_agent import (
     MLTreeEnsembleAgent
 )
 
+from backend.agents.implementations.neural_network_agent import (
+    NeuralNetworkAgent
+)
+
 def register_core_agents(
     registry
 ):
@@ -126,6 +130,11 @@ def register_core_agents(
     # Seat 11
     registry.register(
         MLTreeEnsembleAgent()
+    )
+
+    # Seat 12
+    registry.register(
+        NeuralNetworkAgent()
     )
 
     # Seat 14

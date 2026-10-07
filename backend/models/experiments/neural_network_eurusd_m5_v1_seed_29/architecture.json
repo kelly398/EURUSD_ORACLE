@@ -1,0 +1,10 @@
+{
+  "input_dim": 27,
+  "hidden_dim": 128,
+  "expansion_dim": 256,
+  "residual_blocks": 4,
+  "head_dim": 64,
+  "dropout": 0.12,
+  "residual_dropout": 0.06,
+  "num_classes": 3
+}

@@ -1,0 +1,10 @@
+{
+  "unanimous_class_rate": 0.6481051817478731,
+  "two_to_one_class_rate": 0.3334622325341583,
+  "all_different_class_rate": 0.018432585717968547,
+  "mean_pairwise_class_agreement": 0.7592592592592593,
+  "probability_disagreement_mean": 0.025148050859570503,
+  "probability_disagreement_median": 0.02302093431353569,
+  "probability_disagreement_p95": 0.047973111271858215,
+  "probability_disagreement_max": 0.11962327361106873
+}
