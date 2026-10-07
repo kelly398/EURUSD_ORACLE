@@ -84,6 +84,13 @@ from backend.agents.implementations.hidden_markov_model_agent import (
 from backend.agents.implementations.cot_positioning_agent import (
     COTPositioningAgent
 )
+from backend.agents.implementations.dealer_behaviour_agent import (
+    DealerBehaviourAgent
+)
+
+from backend.agents.implementations.dealer_behaviour_agent import (
+    DealerBehaviourAgent
+)
 
 def register_core_agents(
     registry
@@ -192,6 +199,9 @@ def register_core_agents(
     registry.register(
         COTPositioningAgent()
     )
-    
+    # Seat 23
+    registry.register(
+        DealerBehaviourAgent()
+    )
 
     return registry

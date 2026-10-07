@@ -235,7 +235,7 @@ def main():
 
     assert (
         registry.implemented_count
-        == 22
+        == 23
     )
 
 
@@ -243,7 +243,7 @@ def main():
         len(
             registry.missing_agent_ids
         )
-        == 9
+        == 8
     )
 
 
@@ -367,7 +367,7 @@ def main():
 
     assert (
         result.succeeded_count
-        == 22
+        == 23
     )
 
 
@@ -380,7 +380,6 @@ def main():
     assert (
         result.missing_agent_ids
         == (
-            "dealer_behaviour",
             "ecb",
             "fed",
             "rate_differential",
@@ -406,7 +405,7 @@ def main():
         == list(
             range(
                 1,
-                23,
+                24,
             )
         )
     )
@@ -420,7 +419,7 @@ def main():
         len(
             result.opinions
         )
-        == 22
+        == 23
     )
 
 
