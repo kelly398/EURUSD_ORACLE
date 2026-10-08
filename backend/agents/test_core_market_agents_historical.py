@@ -28,6 +28,21 @@ from backend.models.historical_replay import (
     HistoricalReplayBuilder
 )
 
+from backend.macro.ecb_rate_protocol import (
+    ECB_RATE_SOURCE
+)
+
+from backend.macro.ecb_calendar_protocol import (
+    ECB_CALENDAR_SOURCE,
+    ECB_POLICY_EVENT_CURRENCY,
+    ECB_POLICY_EVENT_JURISDICTION
+)
+
+from backend.macro.macro_repository import (
+    CentralBankRateRepository,
+    EconomicCalendarRepository
+)
+
 
 def main():
 
@@ -152,6 +167,96 @@ def main():
 
 
     # ==================================
+    # LOAD CAUSAL MACRO DATA
+    # ==================================
+
+    ecb_rate_repository = (
+        CentralBankRateRepository(
+
+            source=
+                ECB_RATE_SOURCE,
+
+            central_bank="ECB"
+        )
+    )
+
+
+    economic_calendar_repository = (
+        EconomicCalendarRepository(
+
+            source=
+                ECB_CALENDAR_SOURCE,
+
+            currency=
+                ECB_POLICY_EVENT_CURRENCY,
+
+            jurisdiction=
+                ECB_POLICY_EVENT_JURISDICTION
+        )
+    )
+
+
+    ecb_data = (
+        ecb_rate_repository
+        .get_history_as_of(
+
+            as_of=
+                as_of,
+
+            limit=
+                256
+        )
+    )
+
+
+    economic_calendar = (
+        economic_calendar_repository
+        .get_window_as_of(
+
+            as_of=
+                as_of,
+
+            scheduled_start=(
+                as_of
+                - timedelta(
+                    days=370
+                )
+            ),
+
+            scheduled_end=(
+                as_of
+                + timedelta(
+                    days=370
+                )
+            )
+        )
+    )
+
+
+    print(
+        f"ECB rate snapshots: "
+        f"{len(ecb_data)}"
+    )
+
+    print(
+        f"ECB calendar events: "
+        f"{len(economic_calendar)}"
+    )
+
+
+    assert (
+        len(ecb_data)
+        >= 3
+    )
+
+
+    assert (
+        len(economic_calendar)
+        > 0
+    )
+
+
+    # ==================================
     # BUILD HISTORICAL AGENT CONTEXT
     # ==================================
 
@@ -181,7 +286,13 @@ def main():
                 ticks,
 
             anchor_timestamp=
-                anchor
+                anchor,
+
+            ecb_data=
+                ecb_data,
+
+            economic_calendar=
+                economic_calendar
         )
     )
 
@@ -204,6 +315,22 @@ def main():
     print(
         f"Replay ticks: "
         f"{replay.tick_count}"
+    )
+
+
+    assert (
+        len(
+            context.ecb_data
+        )
+        > 0
+    )
+
+
+    assert (
+        len(
+            context.economic_calendar
+        )
+        > 0
     )
 
 
@@ -235,7 +362,7 @@ def main():
 
     assert (
         registry.implemented_count
-        == 23
+        == 24
     )
 
 
@@ -243,7 +370,7 @@ def main():
         len(
             registry.missing_agent_ids
         )
-        == 8
+        == 7
     )
 
 
@@ -260,6 +387,12 @@ def main():
     assert (
         registry.is_registered(
             "hidden_markov_model"
+        )
+    )
+
+    assert (
+        registry.is_registered(
+            "ecb"
         )
     )
 
@@ -367,7 +500,7 @@ def main():
 
     assert (
         result.succeeded_count
-        == 23
+        == 24
     )
 
 
@@ -380,7 +513,6 @@ def main():
     assert (
         result.missing_agent_ids
         == (
-            "ecb",
             "fed",
             "rate_differential",
             "economic_calendar",
@@ -405,7 +537,7 @@ def main():
         == list(
             range(
                 1,
-                24,
+                25,
             )
         )
     )
@@ -419,7 +551,7 @@ def main():
         len(
             result.opinions
         )
-        == 23
+        == 24
     )
 
 
@@ -435,6 +567,32 @@ def main():
         opinion.agent_id: opinion
         for opinion in result.opinions
     }
+
+
+    ecb_opinion = opinions_by_id["ecb"]
+
+    assert (
+        ecb_opinion.signal_type.value
+        == "contextual"
+    )
+
+    assert (
+        ecb_opinion.direction.value
+        == "neutral"
+    )
+
+    assert (
+        ecb_opinion.score
+        == 0.0
+    )
+
+    assert (
+        ecb_opinion.evidence[
+            "directional_mapping_authorized"
+        ]
+        is False
+    )
+
 
     hmm_opinion = opinions_by_id["hidden_markov_model"]
 

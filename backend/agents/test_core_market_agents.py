@@ -263,7 +263,7 @@ def main():
 
     assert (
         result.succeeded_count
-        == 23
+        == 24
     )
 
 
@@ -277,7 +277,18 @@ def main():
         len(
             result.missing_agent_ids
         )
-        == 5
+        == 4
+    )
+
+
+    assert (
+        result.missing_agent_ids
+        == (
+            "fed",
+            "rate_differential",
+            "economic_calendar",
+            "risk_sentiment",
+        )
     )
 
 
@@ -315,7 +326,8 @@ def main():
             20,
             21,
             22,
-            23
+            23,
+            24
         ]
     )
 
@@ -332,11 +344,27 @@ def main():
         < context.as_of
     )
 
+
+    assert (
+        len(
+            context.ecb_data
+        )
+        > 0
+    )
+
+
+    assert (
+        len(
+            context.economic_calendar
+        )
+        > 0
+    )
+
     assert (
         len(
             result.opinions
         )
-        == 23
+        == 24
     )
 
 
@@ -358,6 +386,45 @@ def main():
         for opinion
         in result.opinions
     }
+
+
+    assert (
+        "ecb"
+        in opinions_by_id
+    )
+
+
+    ecb_opinion = (
+        opinions_by_id[
+            "ecb"
+        ]
+    )
+
+
+    assert (
+        ecb_opinion.signal_type
+        == AgentSignalType.CONTEXTUAL
+    )
+
+
+    assert (
+        ecb_opinion.direction.value
+        == "neutral"
+    )
+
+
+    assert (
+        ecb_opinion.score
+        == 0.0
+    )
+
+
+    assert (
+        ecb_opinion.evidence[
+            "directional_mapping_authorized"
+        ]
+        is False
+    )
 
     assert (
         "ml_tree_ensemble"

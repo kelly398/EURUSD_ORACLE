@@ -38,6 +38,18 @@ from backend.agents.implementations.monte_carlo_agent import (
     MonteCarloAgent
 )
 
+from backend.agents.implementations.ml_tree_ensemble_agent import (
+    MLTreeEnsembleAgent
+)
+
+from backend.agents.implementations.neural_network_agent import (
+    NeuralNetworkAgent
+)
+
+from backend.agents.implementations.hidden_markov_model_agent import (
+    HiddenMarkovModelAgent
+)
+
 from backend.agents.implementations.mean_reversion_agent import (
     MeanReversionAgent
 )
@@ -70,27 +82,18 @@ from backend.agents.implementations.new_york_session_agent import (
     NewYorkSessionAgent
 )
 
-from backend.agents.implementations.ml_tree_ensemble_agent import (
-    MLTreeEnsembleAgent
-)
-
-from backend.agents.implementations.neural_network_agent import (
-    NeuralNetworkAgent
-)
-
-from backend.agents.implementations.hidden_markov_model_agent import (
-    HiddenMarkovModelAgent,
-)
 from backend.agents.implementations.cot_positioning_agent import (
     COTPositioningAgent
 )
-from backend.agents.implementations.dealer_behaviour_agent import (
-    DealerBehaviourAgent
-)
 
 from backend.agents.implementations.dealer_behaviour_agent import (
     DealerBehaviourAgent
 )
+
+from backend.agents.implementations.ecb_agent import (
+    ECBAgent
+)
+
 
 def register_core_agents(
     registry
@@ -141,20 +144,24 @@ def register_core_agents(
         MonteCarloAgent()
     )
 
+
     # Seat 11
     registry.register(
         MLTreeEnsembleAgent()
     )
+
 
     # Seat 12
     registry.register(
         NeuralNetworkAgent()
     )
 
+
     # Seat 13
     registry.register(
         HiddenMarkovModelAgent()
     )
+
 
     # Seat 14
     registry.register(
@@ -173,35 +180,53 @@ def register_core_agents(
         AnomalyDetectionAgent()
     )
 
+
     # Seat 17
     registry.register(
         LiquidityHunterAgent()
     )
+
 
     # Seat 18
     registry.register(
         SmartMoneyAgent()
     )
 
+
     # Seat 19
     registry.register(
         OrderFlowAgent()
     )
+
+
     # Seat 20
     registry.register(
         LondonSessionAgent()
     )
+
+
     # Seat 21
     registry.register(
         NewYorkSessionAgent()
     )
+
+
     # Seat 22
     registry.register(
         COTPositioningAgent()
     )
+
+
     # Seat 23
     registry.register(
         DealerBehaviourAgent()
     )
+
+
+    # Seat 24
+    registry.register(
+        ECBAgent()
+    )
+
 
     return registry
