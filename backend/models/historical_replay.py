@@ -41,6 +41,10 @@ from backend.institutional.cot_schemas import (
     COTPositioningSnapshot
 )
 
+from backend.macro.macro_schemas import (
+    CentralBankRateSnapshot,
+    EconomicCalendarEventSnapshot
+)
 
 DEBUG_REPLAY = False
 
@@ -256,7 +260,269 @@ class HistoricalReplayBuilder:
 
         return locked
 
+    def _lock_ecb_data_as_of(
+        self,
+        ecb_data,
+        as_of
+    ):
 
+        """
+        Build the exact ECB rate information set
+        legally available at `as_of`.
+
+        Revision identity is source_record_id.
+        """
+
+        ecb_data = tuple(
+            ecb_data
+        )
+
+
+        if not ecb_data:
+
+            return tuple()
+
+
+        for item in ecb_data:
+
+            if not isinstance(
+                item,
+                CentralBankRateSnapshot
+            ):
+
+                raise TypeError(
+                    "Historical ECB input must "
+                    "contain "
+                    "CentralBankRateSnapshot."
+                )
+
+
+            if (
+                item.central_bank
+                != "ECB"
+            ):
+
+                raise ValueError(
+                    "Historical ecb_data "
+                    "contains a non-ECB "
+                    "central-bank snapshot."
+                )
+
+
+        eligible = tuple(
+
+            item
+
+            for item
+            in ecb_data
+
+            if (
+                item.available_at
+                <= as_of
+            )
+        )
+
+
+        if not eligible:
+
+            return tuple()
+
+
+        latest_by_source_record = {}
+
+
+        for item in eligible:
+
+            existing = (
+                latest_by_source_record
+                .get(
+                    item.source_record_id
+                )
+            )
+
+
+            if existing is None:
+
+                latest_by_source_record[
+                    item.source_record_id
+                ] = item
+
+                continue
+
+
+            if (
+                item.available_at
+                > existing.available_at
+            ):
+
+                latest_by_source_record[
+                    item.source_record_id
+                ] = item
+
+                continue
+
+
+            if (
+                item.available_at
+                == existing.available_at
+
+                and
+
+                item.content_hash
+                != existing.content_hash
+            ):
+
+                raise ValueError(
+                    "Ambiguous ECB revisions "
+                    "share the same "
+                    "source_record_id and "
+                    "available_at timestamp."
+                )
+
+
+        return tuple(
+
+            sorted(
+
+                latest_by_source_record
+                .values(),
+
+                key=lambda item: (
+                    item.reference_date,
+                    item.rate_name,
+                    item.source_record_id
+                )
+            )
+        )
+
+
+    def _lock_economic_calendar_as_of(
+        self,
+        economic_calendar,
+        as_of
+    ):
+
+        """
+        Build the exact economic-calendar
+        information set legally available at
+        `as_of`.
+
+        A scheduled event is retained even when
+        scheduled_at is in the future, provided
+        its exact record version was already
+        public by as_of.
+
+        Revision identity is source_event_id.
+        """
+
+        economic_calendar = tuple(
+            economic_calendar
+        )
+
+
+        if not economic_calendar:
+
+            return tuple()
+
+
+        for item in economic_calendar:
+
+            if not isinstance(
+                item,
+                EconomicCalendarEventSnapshot
+            ):
+
+                raise TypeError(
+                    "Historical economic-calendar "
+                    "input must contain "
+                    "EconomicCalendarEventSnapshot."
+                )
+
+
+        eligible = tuple(
+
+            item
+
+            for item
+            in economic_calendar
+
+            if (
+                item.available_at
+                <= as_of
+            )
+        )
+
+
+        if not eligible:
+
+            return tuple()
+
+
+        latest_by_event = {}
+
+
+        for item in eligible:
+
+            existing = (
+                latest_by_event
+                .get(
+                    item.source_event_id
+                )
+            )
+
+
+            if existing is None:
+
+                latest_by_event[
+                    item.source_event_id
+                ] = item
+
+                continue
+
+
+            if (
+                item.available_at
+                > existing.available_at
+            ):
+
+                latest_by_event[
+                    item.source_event_id
+                ] = item
+
+                continue
+
+
+            if (
+                item.available_at
+                == existing.available_at
+
+                and
+
+                item.content_hash
+                != existing.content_hash
+            ):
+
+                raise ValueError(
+                    "Ambiguous economic-calendar "
+                    "revisions share the same "
+                    "source_event_id and "
+                    "available_at timestamp."
+                )
+
+
+        return tuple(
+
+            sorted(
+
+                latest_by_event
+                .values(),
+
+                key=lambda item: (
+                    item.scheduled_at,
+                    item.source_event_id
+                )
+            )
+        )
 
     def __init__(
         self,
@@ -321,7 +587,9 @@ class HistoricalReplayBuilder:
         ticks,
         anchor_timestamp,
         ticks_prebounded=False,
-        cot_data=tuple()
+        cot_data=tuple(),
+        ecb_data=tuple(),
+        economic_calendar=tuple()
     ):
 
 
@@ -552,7 +820,36 @@ class HistoricalReplayBuilder:
                 as_of=as_of
             )
         )
+        # ==================================
+        # ECB SNAPSHOT LOCK
+        # ==================================
 
+        ecb_window = (
+            self._lock_ecb_data_as_of(
+
+                ecb_data=
+                    ecb_data,
+
+                as_of=
+                    as_of
+            )
+        )
+
+
+        # ==================================
+        # ECONOMIC CALENDAR SNAPSHOT LOCK
+        # ==================================
+
+        economic_calendar_window = (
+            self._lock_economic_calendar_as_of(
+
+                economic_calendar=
+                    economic_calendar,
+
+                as_of=
+                    as_of
+            )
+        )
         # ==================================
         # TICK VALIDATION + LOCK
         # ==================================
@@ -848,7 +1145,13 @@ class HistoricalReplayBuilder:
 
             ticks=tuple(tick_window),
 
-            cot_data=cot_window
+            cot_data=cot_window,
+
+            ecb_data=ecb_window,
+
+            economic_calendar=(
+                economic_calendar_window
+            )
 
         )
 

@@ -20,6 +20,10 @@ from backend.institutional.cot_schemas import (
     COTPositioningSnapshot
 )
 
+from backend.macro.macro_schemas import (
+    CentralBankRateSnapshot,
+    EconomicCalendarEventSnapshot
+)
 
 # ============================================================
 # EVIDENCE VALUE TYPE
@@ -165,6 +169,16 @@ class AgentContext(BaseModel):
 
     cot_data: tuple[
         COTPositioningSnapshot,
+        ...
+    ] = tuple()
+
+    ecb_data: tuple[
+        CentralBankRateSnapshot,
+        ...
+    ] = tuple()
+
+    economic_calendar: tuple[
+        EconomicCalendarEventSnapshot,
         ...
     ] = tuple()
 
@@ -461,6 +475,174 @@ class AgentContext(BaseModel):
                         "mixed COT contract "
                         "market codes."
                     )
+
+        # ==================================
+        # ECB MACRO DATA
+        # ==================================
+
+        ecb_source_ids = set()
+
+        previous_ecb_key = None
+
+
+        for item in self.ecb_data:
+
+            if (
+                item.available_at
+                > self.as_of
+            ):
+
+                raise ValueError(
+                    "AgentContext contains ECB "
+                    "data that was not yet "
+                    "available at the analysis "
+                    "timestamp. Possible "
+                    "look-ahead leakage."
+                )
+
+
+            if (
+                item.central_bank
+                != "ECB"
+            ):
+
+                raise ValueError(
+                    "AgentContext ecb_data "
+                    "contains a non-ECB "
+                    "central-bank snapshot."
+                )
+
+
+            if (
+                item.source_record_id
+                in ecb_source_ids
+            ):
+
+                raise ValueError(
+                    "AgentContext ecb_data "
+                    "contains multiple causal "
+                    "versions of the same "
+                    "source record."
+                )
+
+
+            ecb_source_ids.add(
+                item.source_record_id
+            )
+
+
+            current_ecb_key = (
+
+                item.reference_date,
+
+                item.rate_name,
+
+                item.source_record_id
+            )
+
+
+            if (
+                previous_ecb_key
+                is not None
+
+                and
+
+                current_ecb_key
+                <= previous_ecb_key
+            ):
+
+                raise ValueError(
+                    "AgentContext ecb_data "
+                    "must be in strict "
+                    "reference-date, rate-name, "
+                    "source-record order."
+                )
+
+
+            previous_ecb_key = (
+                current_ecb_key
+            )
+
+
+        # ==================================
+        # ECONOMIC CALENDAR
+        # ==================================
+        #
+        # scheduled_at may legitimately be
+        # later than as_of. Future scheduled
+        # events are useful information if the
+        # exact version was already public.
+        # ==================================
+
+        calendar_event_ids = set()
+
+        previous_calendar_key = None
+
+
+        for item in self.economic_calendar:
+
+            if (
+                item.available_at
+                > self.as_of
+            ):
+
+                raise ValueError(
+                    "AgentContext contains an "
+                    "economic-calendar version "
+                    "that was not yet available "
+                    "at the analysis timestamp. "
+                    "Possible look-ahead leakage."
+                )
+
+
+            if (
+                item.source_event_id
+                in calendar_event_ids
+            ):
+
+                raise ValueError(
+                    "AgentContext economic "
+                    "calendar contains multiple "
+                    "causal versions of the "
+                    "same event."
+                )
+
+
+            calendar_event_ids.add(
+                item.source_event_id
+            )
+
+
+            current_calendar_key = (
+
+                item.scheduled_at,
+
+                item.source_event_id
+            )
+
+
+            if (
+                previous_calendar_key
+                is not None
+
+                and
+
+                current_calendar_key
+                <= previous_calendar_key
+            ):
+
+                raise ValueError(
+                    "AgentContext economic "
+                    "calendar must be in strict "
+                    "scheduled-time and "
+                    "source-event order."
+                )
+
+
+            previous_calendar_key = (
+                current_calendar_key
+            )
+
 
         return self
 
