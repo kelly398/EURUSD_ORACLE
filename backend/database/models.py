@@ -490,7 +490,245 @@ class COTPositioning(Base):
         nullable=False,
         server_default=func.now()
     )
+class CentralBankRate(Base):
 
+    __tablename__ = "central_bank_rates"
+
+    __table_args__ = (
+
+        UniqueConstraint(
+            "source",
+            "central_bank",
+            "rate_name",
+            "source_record_id",
+            "content_hash",
+            name="uq_central_bank_rate_version"
+        ),
+
+        Index(
+            "ix_central_bank_rates_bank_rate_available",
+            "central_bank",
+            "rate_name",
+            "available_at"
+        ),
+
+        Index(
+            "ix_central_bank_rates_bank_rate_reference",
+            "central_bank",
+            "rate_name",
+            "reference_date"
+        ),
+    )
+
+
+    id = Column(
+        BigInteger,
+        primary_key=True,
+        autoincrement=True
+    )
+
+
+    central_bank = Column(
+        String,
+        nullable=False,
+        index=True
+    )
+
+
+    rate_name = Column(
+        String,
+        nullable=False,
+        index=True
+    )
+
+
+    reference_date = Column(
+        Date,
+        nullable=False,
+        index=True
+    )
+
+
+    # Earliest timestamp at which THIS EXACT
+    # rate-record version may legally enter
+    # analysis.
+    available_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True
+    )
+
+
+    value_percent = Column(
+        Float,
+        nullable=False
+    )
+
+
+    # Stable logical-record identity supplied
+    # or deterministically derived by the
+    # acquisition layer.
+    source_record_id = Column(
+        String,
+        nullable=False
+    )
+
+
+    # SHA-256 of normalized economic contents.
+    # Changed contents create a new row rather
+    # than overwriting a historical version.
+    content_hash = Column(
+        String(64),
+        nullable=False,
+        index=True
+    )
+
+
+    source = Column(
+        String,
+        nullable=False,
+        index=True
+    )
+
+
+    ingested_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now()
+    )
+
+
+class EconomicCalendarEvent(Base):
+
+    __tablename__ = "economic_calendar_events"
+
+    __table_args__ = (
+
+        UniqueConstraint(
+            "source",
+            "source_event_id",
+            "content_hash",
+            name="uq_economic_calendar_event_version"
+        ),
+
+        Index(
+            "ix_economic_calendar_currency_scheduled_available",
+            "currency",
+            "scheduled_at",
+            "available_at"
+        ),
+
+        Index(
+            "ix_economic_calendar_event_available",
+            "source",
+            "source_event_id",
+            "available_at"
+        ),
+    )
+
+
+    id = Column(
+        BigInteger,
+        primary_key=True,
+        autoincrement=True
+    )
+
+
+    # Stable logical event identity supplied
+    # or deterministically derived by the
+    # acquisition layer.
+    source_event_id = Column(
+        String,
+        nullable=False
+    )
+
+
+    event_name = Column(
+        String,
+        nullable=False
+    )
+
+
+    jurisdiction = Column(
+        String,
+        nullable=False,
+        index=True
+    )
+
+
+    currency = Column(
+        String(3),
+        nullable=False,
+        index=True
+    )
+
+
+    # When the economic event is scheduled to
+    # occur. This may legitimately be later
+    # than the analysis timestamp.
+    scheduled_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True
+    )
+
+
+    # Earliest timestamp at which THIS EXACT
+    # event-record version may legally enter
+    # analysis.
+    available_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True
+    )
+
+
+    actual = Column(
+        Float,
+        nullable=True
+    )
+
+
+    forecast = Column(
+        Float,
+        nullable=True
+    )
+
+
+    previous = Column(
+        Float,
+        nullable=True
+    )
+
+
+    unit = Column(
+        String,
+        nullable=True
+    )
+
+
+    # SHA-256 of normalized event contents.
+    # New forecasts, actual values, corrections,
+    # or revisions create new versions.
+    content_hash = Column(
+        String(64),
+        nullable=False,
+        index=True
+    )
+
+
+    source = Column(
+        String,
+        nullable=False,
+        index=True
+    )
+
+
+    ingested_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now()
+    )
 class DataQualityEvent(Base):
 
     __tablename__ = "data_quality_events"
