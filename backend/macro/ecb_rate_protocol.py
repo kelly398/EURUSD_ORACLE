@@ -18,6 +18,10 @@ ECB_SDMX_RATE_BASE_URL = (
     "service/data/FM/"
 )
 
+ECB_SDMX_DATAFLOW_ID = (
+    "FM"
+)
+
 ECB_REQUEST_INCLUDE_HISTORY = True
 
 ECB_REQUEST_FORMAT = (
@@ -171,6 +175,32 @@ ECB_RATE_SOURCE_RECORD_ID_RULE = (
     "KEY|TIME_PERIOD"
 )
 
+def build_ecb_rate_response_key(
+    series_key
+):
+
+    if (
+        not isinstance(
+            series_key,
+            str
+        )
+
+        or
+
+        not series_key.strip()
+    ):
+
+        raise ValueError(
+            "series_key must be "
+            "non-empty."
+        )
+
+
+    return (
+        ECB_SDMX_DATAFLOW_ID
+        + "."
+        + series_key.strip()
+    )
 
 def build_ecb_rate_source_record_id(
     series_key,

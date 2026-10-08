@@ -17,7 +17,9 @@ from backend.macro.ecb_rate_protocol import (
     ECB_RATE_VALUE_FIELD,
     ECB_REQUEST_FORMAT,
     ECB_REQUEST_INCLUDE_HISTORY,
+    ECB_SDMX_DATAFLOW_ID,
     ECB_SDMX_RATE_BASE_URL,
+    build_ecb_rate_response_key,
     build_ecb_rate_source_record_id
 )
 
@@ -52,6 +54,10 @@ def main():
     print("=" * 70)
 
 
+    # ========================================================
+    # OFFICIAL SOURCE
+    # ========================================================
+
     assert (
         ECB_RATE_SOURCE
         == "ECB_SDMX_FM"
@@ -85,6 +91,10 @@ def main():
         "\nOfficial ECB SDMX source: PASS"
     )
 
+
+    # ========================================================
+    # THREE OFFICIAL POLICY-RATE SERIES
+    # ========================================================
 
     expected_series = (
 
@@ -127,6 +137,10 @@ def main():
     )
 
 
+    # ========================================================
+    # CAUSAL FIELD MAPPING
+    # ========================================================
+
     assert (
         ECB_RATE_REFERENCE_DATE_FIELD
         == "TIME_PERIOD"
@@ -158,6 +172,10 @@ def main():
     )
 
 
+    # ========================================================
+    # FAIL-CLOSED SOURCE SEMANTICS
+    # ========================================================
+
     assert (
         ECB_RATE_ALLOWED_ACTIONS
         == (
@@ -184,12 +202,55 @@ def main():
     )
 
 
+    # ========================================================
+    # REQUEST KEY VS OFFICIAL RESPONSE KEY
+    # ========================================================
+
+    assert (
+        ECB_SDMX_DATAFLOW_ID
+        == "FM"
+    )
+
+
+    response_key = (
+        build_ecb_rate_response_key(
+
+            "B.U2.EUR.4F.KR.DFR.LEV"
+        )
+    )
+
+
+    assert (
+        response_key
+        == (
+            "FM.B.U2.EUR.4F.KR.DFR.LEV"
+        )
+    )
+
+
+    assert_value_error(
+
+        lambda:
+            build_ecb_rate_response_key(
+                ""
+            )
+    )
+
+
+    print(
+        "Official SDMX response key: PASS"
+    )
+
+
+    # ========================================================
+    # LOGICAL RECORD IDENTITY
+    # ========================================================
+
     source_record_id = (
         build_ecb_rate_source_record_id(
 
-            series_key=(
-                "B.U2.EUR.4F.KR.DFR.LEV"
-            ),
+            series_key=
+                response_key,
 
             time_period=(
                 "2026-09-16"
@@ -201,10 +262,11 @@ def main():
     assert (
         source_record_id
         == (
-            "B.U2.EUR.4F.KR.DFR.LEV"
+            "FM.B.U2.EUR.4F.KR.DFR.LEV"
             "|2026-09-16"
         )
     )
+
 
     assert (
         ECB_RATE_SOURCE_RECORD_ID_RULE
@@ -226,7 +288,9 @@ def main():
 
         lambda:
             build_ecb_rate_source_record_id(
-                "B.U2.EUR.4F.KR.DFR.LEV",
+                (
+                    "FM.B.U2.EUR.4F.KR.DFR.LEV"
+                ),
                 ""
             )
     )
@@ -236,6 +300,10 @@ def main():
         "Stable logical record identity: PASS"
     )
 
+
+    # ========================================================
+    # ECONOMIC CONTENT HASH CONTRACT
+    # ========================================================
 
     assert (
         ECB_RATE_CONTENT_HASH_FIELDS
@@ -269,6 +337,10 @@ def main():
         "Economic content-hash boundary: PASS"
     )
 
+
+    # ========================================================
+    # TLS CONTRACT
+    # ========================================================
 
     assert (
         ECB_RATE_TLS_CA_PROVIDER
