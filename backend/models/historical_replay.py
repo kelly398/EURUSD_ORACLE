@@ -46,6 +46,10 @@ from backend.macro.macro_schemas import (
     EconomicCalendarEventSnapshot
 )
 
+from backend.macro.fed_replay_lock import (
+    lock_fed_data_as_of
+)
+
 DEBUG_REPLAY = False
 
 
@@ -395,6 +399,15 @@ class HistoricalReplayBuilder:
             )
         )
 
+    def _lock_fed_data_as_of(
+        self,
+        fed_data,
+        as_of
+    ):
+        return lock_fed_data_as_of(
+            fed_data=fed_data,
+            as_of=as_of
+        )
 
     def _lock_economic_calendar_as_of(
         self,
@@ -589,7 +602,8 @@ class HistoricalReplayBuilder:
         ticks_prebounded=False,
         cot_data=tuple(),
         ecb_data=tuple(),
-        economic_calendar=tuple()
+        economic_calendar=tuple(),
+        fed_data=tuple()
     ):
 
 
@@ -810,6 +824,48 @@ class HistoricalReplayBuilder:
             )
 
         )
+
+        # ==================================
+        # FED SNAPSHOT LOCK
+        # HISTORICAL ADMISSION DISABLED
+        # ==================================
+        # An economic content hash and an
+        # ingestion timestamp do not prove
+        # independent historical authenticity.
+        #
+        # Until independently attested source
+        # versions exist, historical replay
+        # must not admit Fed snapshots.
+        # ==================================
+
+        if fed_data is None:
+            raise TypeError(
+                "Historical Fed input cannot be None."
+            )
+
+        fed_input = tuple(fed_data)
+
+        if fed_input:
+            raise ValueError(
+                "Historical Fed replay admission is disabled "
+                "pending independent source-version certification."
+            )
+
+        fed_window = self._lock_fed_data_as_of(
+            fed_data=fed_input,
+            as_of=as_of
+        )
+
+        # Defense in depth: even if the lock is
+        # subsequently changed, no Fed context
+        # may be admitted through this checkpoint.
+        if fed_window:
+            raise ValueError(
+                "Historical Fed replay admission is disabled "
+                "pending independent source-version certification."
+            )
+
+
         # ==================================
         # COT SNAPSHOT LOCK
         # ==================================
@@ -1149,10 +1205,11 @@ class HistoricalReplayBuilder:
 
             ecb_data=ecb_window,
 
+            fed_data=fed_window,
+
             economic_calendar=(
                 economic_calendar_window
             )
-
         )
 
         if DEBUG_REPLAY:
