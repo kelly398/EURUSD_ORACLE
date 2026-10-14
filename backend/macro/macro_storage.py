@@ -31,13 +31,38 @@ class MacroStorageResult:
     skipped: int
 
 
+class FedRatePersistenceBlocked(PermissionError):
+    """An attested Federal Reserve persistence path is not yet installed."""
+
+
 class CentralBankRateStorage:
+
+    @staticmethod
+    def _validate_snapshot(snapshot):
+        if not isinstance(snapshot, CentralBankRateSnapshot):
+            raise TypeError(
+                "Central-bank rate storage accepts only "
+                "CentralBankRateSnapshot."
+            )
+
+        # Applies to both the public batch writer and the row helper.
+        # No source-version attestation is yet available for Fed records.
+        if (
+            snapshot.central_bank.strip().casefold() == "fed"
+            or snapshot.source.strip().casefold() == "fed_fomc_release"
+        ):
+            raise FedRatePersistenceBlocked(
+                "FED policy-rate persistence is disabled pending "
+                "historical source-version attestation."
+            )
 
     def _insert_snapshot(
         self,
         session,
         snapshot
     ):
+
+        self._validate_snapshot(snapshot)
 
         statement = (
 
@@ -114,17 +139,7 @@ class CentralBankRateStorage:
 
 
         for snapshot in snapshots:
-
-            if not isinstance(
-                snapshot,
-                CentralBankRateSnapshot
-            ):
-
-                raise TypeError(
-                    "Central-bank rate storage "
-                    "accepts only "
-                    "CentralBankRateSnapshot."
-                )
+            self._validate_snapshot(snapshot)
 
 
         if not snapshots:
