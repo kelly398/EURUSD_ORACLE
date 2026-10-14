@@ -29,6 +29,13 @@ from backend.macro.macro_repository import (
     EconomicCalendarRepository
 )
 
+from backend.macro.fed_rate_candidate_repository import (
+    FedRateCandidateRepository
+)
+
+from backend.agents.fed_context_adapter import (
+    quarantine_fed_context_candidates
+)
 
 class AgentContextFactory:
 
@@ -41,7 +48,8 @@ class AgentContextFactory:
         macro_calendar_lookback_days=370,
         macro_calendar_lookahead_days=370,
         ecb_rate_repository=None,
-        economic_calendar_repository=None
+        economic_calendar_repository=None,
+        fed_candidate_repository=None
     ):
 
         if candle_limit <= 0:
@@ -109,6 +117,13 @@ class AgentContextFactory:
         )
 
 
+        # Read-only Fed diagnostic ingress; build() never calls it.
+        self.fed_candidate_repository = (
+            fed_candidate_repository
+            if fed_candidate_repository is not None
+            else FedRateCandidateRepository()
+        )
+
         self.candle_repository = (
             CandleRepository(
                 source="MT5"
@@ -162,6 +177,33 @@ class AgentContextFactory:
             )
         )
 
+    def inspect_fed_candidates(self, base_context):
+        """Explicit F5 Fed read-only probe. NEVER injects fed_data.
+
+        Production build() remains ECB-only. The candidate repository
+        must not be used to infer independent source-version admission.
+        Returns only a quarantine diagnostic receipt, never a context.
+        """
+        from pydantic import ValidationError
+
+        if not isinstance(base_context, AgentContext):
+            raise TypeError("Fed inspection requires AgentContext.")
+
+        try:
+            validated = AgentContext.model_validate(base_context.model_dump())
+        except (ValidationError, TypeError, ValueError) as exc:
+            raise ValueError("Fed inspection base context is invalid.") from exc
+
+        if validated.fed_data:
+            raise ValueError(
+                "Fed inspection requires empty operational fed_data."
+            )
+
+        candidates = self.fed_candidate_repository.get_history_as_of(
+            as_of=validated.as_of,
+            limit=256,
+        )
+        return quarantine_fed_context_candidates(validated, candidates)
 
     def _load_macro_context(
         self,
