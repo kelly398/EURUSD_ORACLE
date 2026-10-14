@@ -152,8 +152,10 @@ class FedCertifiedBackfill:
                 economic_consistency=
                     FedEvidenceResult.PASS,
 
+                # Matching source bytes and date-level ALFRED values
+                # do NOT establish historical Fed-origin custody.
                 source_integrity=
-                    FedEvidenceResult.PASS,
+                    FedEvidenceResult.UNKNOWN,
 
                 historical_availability=
                     FedAvailabilityLevel.DATE_BOUND,
@@ -179,9 +181,10 @@ class FedCertifiedBackfill:
 
                 reason=
                     (
-                        "Fed decision matched "
-                        "ALFRED effective-rate "
-                        "observations."
+                        "Fed decision matched ALFRED date-level "
+                        "effective-rate observations; historical "
+                        "source integrity and intraday availability "
+                        "remain unverified."
                     ),
             )
         )

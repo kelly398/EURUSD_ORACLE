@@ -27,6 +27,8 @@ from backend.macro.macro_schemas import (
     CentralBankRateSnapshot,
 )
 
+from backend.macro.fed_rate_protocol import build_fed_content_hash
+
 
 UTC = timezone.utc
 
@@ -79,6 +81,8 @@ def certification(
 def snapshot(
     bank="FED",
     source="FED_FOMC_RELEASE",
+    *,
+    bound="lower",
 ):
 
     return CentralBankRateSnapshot(
@@ -86,7 +90,7 @@ def snapshot(
         source=source,
 
         rate_name=
-            "federal_funds_target_lower",
+            f"federal_funds_target_{bound}",
 
         reference_date=date(
             2026,
@@ -103,13 +107,17 @@ def snapshot(
             tzinfo=UTC,
         ),
 
-        value_percent=3.75,
+        value_percent=3.75 if bound == "lower" else 4.0,
 
         source_record_id=
-            "FOMC:monetary20260916a:lower",
+            f"FOMC:monetary20260916a:{bound}",
 
-        content_hash=
-            "c"*64,
+        content_hash=build_fed_content_hash(
+            "monetary20260916a",
+            f"federal_funds_target_{bound}",
+            date(2026, 9, 17),
+            "3.75", "4.0",
+        ),
 
         ingested_at=datetime(
             2026,
@@ -141,21 +149,7 @@ class FedCertifiedStorageTests(unittest.TestCase):
             wrapper.store_certified_fed_many(
                 (
                     snapshot(),
-                    snapshot().model_copy(
-                        update={
-                            "rate_name":
-                            "federal_funds_target_upper",
-
-                            "source_record_id":
-                            "FOMC:monetary20260916a:upper",
-
-                            "content_hash":
-                            "d"*64,
-
-                            "value_percent":
-                            4.0,
-                        }
-                    ),
+                    snapshot(bound="upper"),
                 ),
                 certification(),
             )
@@ -281,7 +275,7 @@ class FedCertifiedStorageTests(unittest.TestCase):
             wrapper.store_certified_fed_many(
                 (
                     snapshot(),
-                    snapshot(),
+                    snapshot(bound="upper"),
                 ),
                 certification(),
             )
@@ -299,7 +293,7 @@ class FedCertifiedStorageTests(unittest.TestCase):
             wrapper.store_certified_fed_many(
                 (
                     snapshot(),
-                    snapshot(),
+                    snapshot(bound="upper"),
                 ),
                 certification(),
             )
@@ -309,6 +303,65 @@ class FedCertifiedStorageTests(unittest.TestCase):
             len(result.certification_hash),
             64,
         )
+
+
+    def test_10_wrong_statement_certification_is_rejected(self):
+        from dataclasses import replace
+        storage = Mock()
+        mismatch = replace(certification(), statement_id="monetary20261216a")
+        with self.assertRaises(FedCertifiedStorageError):
+            FedCertifiedRateStorage(storage=storage).store_certified_fed_many(
+                (snapshot(), snapshot(bound="upper")), mismatch,
+            )
+        storage.store_many.assert_not_called()
+
+    def test_11_wrong_effective_date_is_rejected(self):
+        from dataclasses import replace
+        storage = Mock()
+        mismatch = replace(certification(), effective_date=date(2026, 9, 18))
+        with self.assertRaises(FedCertifiedStorageError):
+            FedCertifiedRateStorage(storage=storage).store_certified_fed_many(
+                (snapshot(), snapshot(bound="upper")), mismatch,
+            )
+        storage.store_many.assert_not_called()
+
+    def test_12_wrong_release_time_is_rejected(self):
+        from dataclasses import replace
+        storage = Mock()
+        mismatch = replace(
+            certification(),
+            release_timestamp=datetime(2026, 9, 16, 19, tzinfo=UTC),
+        )
+        with self.assertRaises(FedCertifiedStorageError):
+            FedCertifiedRateStorage(storage=storage).store_certified_fed_many(
+                (snapshot(), snapshot(bound="upper")), mismatch,
+            )
+        storage.store_many.assert_not_called()
+
+    def test_13_forged_economic_hash_is_rejected(self):
+        storage = Mock()
+        invalid = snapshot().model_copy(update={"content_hash": "c" * 64})
+        with self.assertRaises(FedCertifiedStorageError):
+            FedCertifiedRateStorage(storage=storage).store_certified_fed_many(
+                (invalid, snapshot(bound="upper")), certification(),
+            )
+        storage.store_many.assert_not_called()
+
+    def test_14_duplicate_bound_is_rejected(self):
+        storage = Mock()
+        with self.assertRaises(FedCertifiedStorageError):
+            FedCertifiedRateStorage(storage=storage).store_certified_fed_many(
+                (snapshot(), snapshot()), certification(),
+            )
+        storage.store_many.assert_not_called()
+
+    def test_15_out_of_order_bounds_are_rejected(self):
+        storage = Mock()
+        with self.assertRaises(FedCertifiedStorageError):
+            FedCertifiedRateStorage(storage=storage).store_certified_fed_many(
+                (snapshot(bound="upper"), snapshot()), certification(),
+            )
+        storage.store_many.assert_not_called()
 
 
 if __name__ == "__main__":

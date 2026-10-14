@@ -36,6 +36,8 @@ from backend.macro.macro_schemas import (
     CentralBankRateSnapshot,
 )
 
+from backend.macro.fed_rate_protocol import build_fed_content_hash
+
 
 UTC = timezone.utc
 
@@ -62,7 +64,12 @@ def fed_snapshots():
         value_percent=3.75,
         source_record_id=
             "FOMC:monetary20260916a:lower",
-        content_hash="a"*64,
+        content_hash=build_fed_content_hash(
+            "monetary20260916a",
+            "federal_funds_target_lower",
+            date(2026, 9, 17),
+            "3.75", "4.0",
+        ),
         ingested_at=datetime(
             2026,
             10,
@@ -85,8 +92,12 @@ def fed_snapshots():
             "source_record_id":
                 "FOMC:monetary20260916a:upper",
 
-            "content_hash":
-                "b"*64,
+            "content_hash":build_fed_content_hash(
+                "monetary20260916a",
+                "federal_funds_target_upper",
+                date(2026, 9, 17),
+                "3.75", "4.0",
+            ),
         }
     )
 

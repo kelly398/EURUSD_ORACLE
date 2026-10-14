@@ -35,6 +35,11 @@ from backend.macro.macro_storage import (
     CentralBankRateStorage,
 )
 
+from backend.macro.fed_replay_lock import (
+    FedReplayLockError,
+    lock_fed_data_as_of,
+)
+
 
 class FedCertifiedStorageError(PermissionError):
     """
@@ -123,70 +128,80 @@ class FedCertifiedRateStorage:
         snapshots,
         certification,
     ):
+        """Require one canonical Fed target-range pair bound to its claim.
 
-        if not isinstance(
-            snapshots,
-            tuple,
-        ):
-            snapshots = tuple(snapshots)
+        This is an internal economic/temporal consistency check only.
+        A caller-provided PERSISTENCE_APPROVED certificate is not proof
+        of independently authenticated historical publication. The
+        underlying CentralBankRateStorage still refuses every Fed write.
+        """
+        if snapshots is None:
+            raise FedCertifiedStorageError(
+                "Fed snapshots cannot be None."
+            )
 
+        try:
+            iterator = iter(snapshots)
+        except TypeError as exc:
+            raise FedCertifiedStorageError(
+                "Fed snapshots must be iterable."
+            ) from exc
 
-        if len(snapshots) != 2:
+        # Cap consumption before attempting any database operation.
+        from itertools import islice
+        supplied = tuple(islice(iterator, 3))
 
+        if len(supplied) != 2:
             raise FedCertifiedStorageError(
                 "Fed target range requires exactly two snapshots."
             )
 
-
-        for snapshot in snapshots:
-
-            if not isinstance(
-                snapshot,
-                CentralBankRateSnapshot,
-            ):
+        for bound, item in zip(("lower", "upper"), supplied, strict=True):
+            if not isinstance(item, CentralBankRateSnapshot):
                 raise FedCertifiedStorageError(
                     "Invalid Fed snapshot type."
                 )
-
-
             if (
-                snapshot.central_bank != "FED"
-                or snapshot.source != "FED_FOMC_RELEASE"
+                item.central_bank != "FED"
+                or item.source != "FED_FOMC_RELEASE"
+                or item.rate_name != f"federal_funds_target_{bound}"
+                or item.source_record_id
+                != f"FOMC:{certification.statement_id}:{bound}"
             ):
                 raise FedCertifiedStorageError(
-                    "Snapshot is not a Fed FOMC record."
+                    "Fed snapshot identity does not match certification."
                 )
-
-
             if (
-                not snapshot.source_record_id.startswith(
-                    "FOMC:"
-                )
+                item.reference_date != certification.effective_date
+                or item.available_at != certification.release_timestamp
             ):
                 raise FedCertifiedStorageError(
-                    "Invalid Fed source identity."
+                    "Fed snapshot chronology does not match certification."
                 )
 
-
-        hashes = tuple(
-            snapshot.content_hash
-            for snapshot in snapshots
-        )
-
-        certification_hashes = (
-            certification.fed_document_hashes
-        )
-
-        if not certification_hashes:
-
+        if not certification.fed_document_hashes:
             raise FedCertifiedStorageError(
                 "Missing Fed evidence hashes."
             )
 
+        # The F1 replay lock rechecks paired economic hashes, ordering,
+        # ingestion chronology, source IDs, and both rate bounds.
+        try:
+            locked = lock_fed_data_as_of(
+                supplied,
+                as_of=max(item.ingested_at for item in supplied),
+            )
+        except (FedReplayLockError, ValueError, TypeError) as exc:
+            raise FedCertifiedStorageError(
+                "Fed snapshot economic or temporal validation failed."
+            ) from exc
 
-        return snapshots
+        if locked != supplied:
+            raise FedCertifiedStorageError(
+                "Fed snapshot pair is not canonical."
+            )
 
-
+        return supplied
 
     def store_certified_fed_many(
         self,
