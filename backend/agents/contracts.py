@@ -177,6 +177,11 @@ class AgentContext(BaseModel):
         ...
     ] = tuple()
 
+    fed_data: tuple[
+        CentralBankRateSnapshot,
+        ...
+    ] = tuple()
+
     economic_calendar: tuple[
         EconomicCalendarEventSnapshot,
         ...
@@ -563,6 +568,133 @@ class AgentContext(BaseModel):
                 current_ecb_key
             )
 
+
+        # ==================================
+        # FED POLICY-RATE CONTEXT
+        # ==================================
+        # Structural and temporal validation.
+        # This does not certify historical
+        # source-version availability.
+        # ==================================
+
+        seen_fed_ids = set()
+        previous_fed_key = None
+        fed_decisions = {}
+
+        for item in self.fed_data:
+
+            if not isinstance(item, CentralBankRateSnapshot):
+                raise ValueError(
+                    "AgentContext fed_data requires rate snapshots."
+                )
+
+            if (
+                item.central_bank != "FED"
+                or item.source != "FED_FOMC_RELEASE"
+            ):
+                raise ValueError(
+                    "AgentContext fed_data requires official Fed source identity."
+                )
+
+            if (
+                item.available_at > self.as_of
+                or item.ingested_at > self.as_of
+            ):
+                raise ValueError(
+                    "AgentContext contains Fed evidence observed after as_of."
+                )
+
+            if item.ingested_at < item.available_at:
+                raise ValueError(
+                    "AgentContext Fed ingestion predates reported availability."
+                )
+
+            bound_by_name = {
+                "federal_funds_target_lower": "lower",
+                "federal_funds_target_upper": "upper",
+            }
+
+            bound = bound_by_name.get(item.rate_name)
+
+            if bound is None:
+                raise ValueError(
+                    "AgentContext fed_data contains unsupported rate name."
+                )
+
+            suffix = ":" + bound
+            record_id = item.source_record_id
+
+            if (
+                not record_id.startswith("FOMC:monetary")
+                or not record_id.endswith(suffix)
+                or len(record_id)
+                <= len("FOMC:monetary") + len(suffix)
+            ):
+                raise ValueError(
+                    "AgentContext Fed record identity does not match its bound."
+                )
+
+            if record_id in seen_fed_ids:
+                raise ValueError(
+                    "AgentContext contains duplicate Fed source record."
+                )
+
+            seen_fed_ids.add(record_id)
+
+            key = (
+                item.reference_date,
+                item.rate_name,
+                record_id,
+            )
+
+            if (
+                previous_fed_key is not None
+                and key <= previous_fed_key
+            ):
+                raise ValueError(
+                    "AgentContext Fed history must be strictly ordered."
+                )
+
+            previous_fed_key = key
+
+            statement_id = record_id[:-len(suffix)]
+            decision = fed_decisions.setdefault(
+                statement_id, {}
+            )
+
+            if bound in decision:
+                raise ValueError(
+                    "AgentContext contains duplicate Fed rate bound."
+                )
+
+            decision[bound] = item
+
+        for pair in fed_decisions.values():
+
+            if set(pair) != {"lower", "upper"}:
+                raise ValueError(
+                    "AgentContext requires complete Fed lower/upper pairs."
+                )
+
+            lower = pair["lower"]
+            upper = pair["upper"]
+
+            if (
+                lower.reference_date != upper.reference_date
+                or lower.available_at != upper.available_at
+                or lower.ingested_at != upper.ingested_at
+            ):
+                raise ValueError(
+                    "AgentContext Fed decision pair has inconsistent provenance."
+                )
+
+            if (
+                lower.value_percent > upper.value_percent
+                or lower.content_hash == upper.content_hash
+            ):
+                raise ValueError(
+                    "AgentContext Fed decision pair is inconsistent."
+                )
 
         # ==================================
         # ECONOMIC CALENDAR
