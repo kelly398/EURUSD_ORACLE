@@ -3,8 +3,8 @@
 
 Run: python -m backend.agents.test_fed_council_readiness
 
-The only Fed registration occurs in a fresh in-memory AgentRegistry
-created by the tests. This does not change register_core_agents.
+Availability registration is distinct from operational source admission.
+These tests use isolated registries and verify that Fed dispatch remains gated.
 No broker, network, database, or HMM evaluation is invoked.
 """
 
@@ -13,6 +13,7 @@ from pathlib import Path
 import unittest
 
 from backend.agents.agent_registry import AgentRegistry
+from backend.agents.council_inputs import ExecutionMode
 from backend.agents.contracts import (
     AgentCategory,
     AgentContext,
@@ -132,7 +133,7 @@ class FedCouncilReadinessTests(unittest.TestCase):
                 require_all_registered=True,
             )
 
-    def test_10_missing_fed_input_is_a_runner_error_not_an_opinion(self):
+    def test_10_missing_fed_input_is_blocked_without_an_opinion(self):
         registry = AgentRegistry()
         registry.register(FedAgent())
 
@@ -150,12 +151,12 @@ class FedCouncilReadinessTests(unittest.TestCase):
         self.assertEqual(execution.seat_number, 25)
         self.assertEqual(
             execution.status,
-            AgentRunStatus.ERROR,
+            AgentRunStatus.BLOCKED,
         )
         self.assertIsNone(execution.opinion)
         self.assertIn(
-            "requires causal Fed",
-            execution.error,
+            "INPUT_MISSING:fed_data",
+            execution.blockers,
         )
         self.assertFalse(result.is_complete)
 
@@ -166,8 +167,10 @@ class FedCouncilReadinessTests(unittest.TestCase):
         result = CouncilRunner(
             registry,
             max_workers=1,
+            mode=ExecutionMode.RESEARCH,
         ).run_primary(
-            make_context(fed_data=fed_pair())
+            AgentContext.model_validate({**make_context(fed_data=fed_pair()).model_dump(),
+                                         "execution_mode":ExecutionMode.RESEARCH})
         )
 
         self.assertEqual(len(result.executions), 1)
@@ -213,7 +216,7 @@ class FedCouncilReadinessTests(unittest.TestCase):
             ]
         )
 
-    def test_13_core_registration_source_does_not_activate_fed(self):
+    def test_13_core_catalogue_contains_fed_without_granting_admission(self):
         # Parse rather than import the core registration module.
         # Importing it would load other completed agent implementations.
         source = Path(__file__).with_name(
@@ -229,20 +232,20 @@ class FedCouncilReadinessTests(unittest.TestCase):
         for node in ast.walk(tree):
 
             if (
-                isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute)
-                and node.func.attr == "register"
-                and len(node.args) == 1
-                and isinstance(node.args[0], ast.Call)
-                and isinstance(node.args[0].func, ast.Name)
+                isinstance(node, ast.Assign)
+                and any(isinstance(target,ast.Name) and target.id=="CORE_AGENT_FACTORIES" for target in node.targets)
+                and isinstance(node.value,ast.Tuple)
             ):
-                constructed.append(
-                    node.args[0].func.id
-                )
+                constructed.extend(value.id for value in node.value.elts if isinstance(value,ast.Name))
 
-        self.assertEqual(len(constructed), 24)
+        self.assertEqual(len(constructed), 31)
         self.assertIn("ECBAgent", constructed)
-        self.assertNotIn("FedAgent", constructed)
+        self.assertIn("FedAgent", constructed)
+        registry=AgentRegistry()
+        registry.register(FedAgent())
+        result=CouncilRunner(registry).run_primary(make_context(fed_data=fed_pair()))
+        self.assertEqual(result.executions[0].status,AgentRunStatus.BLOCKED)
+        self.assertIn("FED_SOURCE_VERSION_ATTESTATION_MISSING",result.executions[0].blockers)
 
     def test_14_live_factory_does_not_silently_inject_fed_data(self):
         source = Path(__file__).with_name(

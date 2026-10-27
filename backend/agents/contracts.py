@@ -1,3 +1,9 @@
+from __future__ import annotations
+from math import isfinite
+from backend.agents.council_inputs import (
+    ExecutionMode, CrossAssetObservation, CalendarCoverage, PortfolioRiskSnapshot,
+    RiskLimits, AgentReliability, SynthesisPolicy, require_aware,
+)
 from datetime import datetime
 from enum import Enum
 from typing import Union
@@ -146,7 +152,9 @@ class AgentSignalType(str, Enum):
 class AgentContext(BaseModel):
 
     model_config = ConfigDict(
-        frozen=True
+        frozen=True,
+        extra="forbid",
+        allow_inf_nan=False,
     )
 
     symbol: str
@@ -186,6 +194,94 @@ class AgentContext(BaseModel):
         EconomicCalendarEventSnapshot,
         ...
     ] = tuple()
+
+    cross_asset_data: tuple[CrossAssetObservation, ...] = ()
+    calendar_coverage: CalendarCoverage | None = None
+    risk_state: PortfolioRiskSnapshot | None = None
+    risk_limits: RiskLimits | None = None
+    reliability: tuple[AgentReliability, ...] = ()
+    synthesis_policy: SynthesisPolicy | None = None
+    primary_agent_opinions: tuple[AgentOpinion, ...] = ()
+    governance_opinions: tuple[AgentOpinion, ...] = ()
+    # Observation age limits are analysis conventions, not validated forecasts.
+    max_cross_asset_age_days: int = Field(default=4, ge=1, le=10)
+
+    execution_mode: ExecutionMode = ExecutionMode.PRODUCTION
+
+    @property
+    def rates_data(self):
+        return self.ecb_data + self.fed_data
+
+    @property
+    def execution_authorized(self) -> bool:
+        return False
+
+    @classmethod
+    def from_context(cls, context, **inputs):
+        if not isinstance(context, AgentContext):
+            raise TypeError("Council construction requires an existing AgentContext.")
+        protected = {"symbol", "timeframe", "as_of", "market_state", "candles", "ticks",
+                     "cot_data", "ecb_data", "fed_data", "economic_calendar"}
+        if protected.intersection(inputs):
+            raise ValueError("Supplemental inputs cannot replace base market/macro context.")
+        return cls.model_validate({**context.model_dump(), **inputs})
+
+    @model_validator(mode="after")
+    def validate_council_inputs(self):
+        from backend.agents.council_manifest import COUNCIL_MANIFEST
+        require_aware(self.as_of, "analysis as_of")
+        has_supplemental = bool(self.cross_asset_data or self.risk_state or self.reliability
+                                or self.primary_agent_opinions or self.governance_opinions)
+        if has_supplemental and (self.symbol != "EURUSD" or self.timeframe != "M5"):
+            raise ValueError("This supplemental Council contract is scoped to EURUSD M5.")
+        ids = [item.series_id for item in self.cross_asset_data]
+        if ids != sorted(set(ids)):
+            raise ValueError("Cross-asset inputs must be unique and sorted by series ID.")
+        for item in self.cross_asset_data:
+            if item.ingested_at > self.as_of:
+                raise ValueError("Cross-asset data was not received by context as_of.")
+        if self.calendar_coverage and self.calendar_coverage.available_at > self.as_of:
+            raise ValueError("Future calendar coverage is not causal.")
+        if self.risk_state and self.risk_state.as_of > self.as_of:
+            raise ValueError("Future portfolio state is not causal.")
+        for rate in self.rates_data:
+            if not isfinite(rate.value_percent):
+                raise ValueError("Policy rates must be finite.")
+        for event in self.economic_calendar:
+            if any(value is not None and not isfinite(value)
+                   for value in (event.actual, event.forecast, event.previous)):
+                raise ValueError("Calendar measurements must be finite.")
+            if event.actual is not None and event.scheduled_at > self.as_of:
+                raise ValueError("Future scheduled releases cannot expose an actual outcome.")
+        reliability_ids = [item.agent_id for item in self.reliability]
+        allowed = {spec.agent_id for spec in COUNCIL_MANIFEST if spec.stage == AgentStage.PRIMARY}
+        if len(set(reliability_ids)) != len(reliability_ids) or not set(reliability_ids) <= allowed:
+            raise ValueError("Reliability entries must have unique primary agent identities.")
+        if any(item.available_at > self.as_of for item in self.reliability):
+            raise ValueError("Future evaluation evidence is not causal.")
+        for opinions, stage in ((self.primary_agent_opinions, AgentStage.PRIMARY),
+                                (self.governance_opinions, AgentStage.GOVERNANCE)):
+            specs = {spec.agent_id: spec for spec in COUNCIL_MANIFEST if spec.stage == stage}
+            seats = []
+            for opinion in opinions:
+                spec = specs.get(opinion.agent_id)
+                if spec is None or opinion.agent_name != spec.agent_name or opinion.category != spec.category:
+                    raise ValueError("Stage opinion identity does not match the Council manifest.")
+                if opinion.as_of != self.as_of:
+                    raise ValueError("Stage opinions must match the exact analysis timestamp.")
+                if stage == AgentStage.GOVERNANCE and opinion.signal_type.value != "governance":
+                    raise ValueError("Governance handoff requires governance opinions.")
+                if stage == AgentStage.PRIMARY and opinion.signal_type.value == "governance":
+                    raise ValueError("Primary agents cannot inject governance opinions.")
+                if ((opinion.direction.value == "long" and opinion.score <= 0)
+                        or (opinion.direction.value == "short" and opinion.score >= 0)):
+                    raise ValueError("Directional opinion and score sign disagree.")
+                if any(isinstance(value, float) and not isfinite(value) for value in opinion.evidence.values()):
+                    raise ValueError("Stage opinion evidence must be finite.")
+                seats.append(spec.seat_number)
+            if seats != sorted(set(seats)):
+                raise ValueError("Stage opinions must be unique and in Council seat order.")
+        return self
 
     @model_validator(
         mode="after"
@@ -868,3 +964,6 @@ class AgentOpinion(BaseModel):
 
 
         return self
+
+# Resolve stage-opinion references after AgentOpinion is defined.
+AgentContext.model_rebuild()

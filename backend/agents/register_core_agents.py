@@ -1,3 +1,4 @@
+"""Authoritative implementation catalogue for all 31 Council seats."""
 from backend.agents.implementations.trend_master_agent import (
     TrendMasterAgent
 )
@@ -95,138 +96,48 @@ from backend.agents.implementations.ecb_agent import (
 )
 
 
-def register_core_agents(
-    registry
-):
-
-    # Seats 1-8
-    registry.register(
-        TrendMasterAgent()
-    )
-
-    registry.register(
-        PriceActionAgent()
-    )
-
-    registry.register(
-        SupportResistanceAgent()
-    )
-
-    registry.register(
-        MomentumAgent()
-    )
-
-    registry.register(
-        VolatilityAgent()
-    )
-
-    registry.register(
-        FibonacciAgent()
-    )
-
-    registry.register(
-        PatternRecognitionAgent()
-    )
-
-    registry.register(
-        MarketStructureAgent()
-    )
+from backend.agents.agent_registry import AgentRegistry
+from backend.agents.implementations.fed_agent import FedAgent
+from backend.agents.implementations.rate_differential_agent import RateDifferentialAgent
+from backend.agents.implementations.economic_calendar_agent import EconomicCalendarAgent
+from backend.agents.implementations.risk_sentiment_agent import RiskSentimentAgent
+from backend.agents.implementations.devils_advocate_agent import DevilsAdvocateAgent
+from backend.agents.implementations.risk_officer_agent import RiskOfficerAgent
+from backend.agents.implementations.chief_strategist_agent import ChiefStrategistAgent
 
 
-    # Seat 9
-    registry.register(
-        StatisticalProbabilityAgent()
-    )
+CORE_AGENT_FACTORIES = (
+    TrendMasterAgent, PriceActionAgent, SupportResistanceAgent, MomentumAgent,
+    VolatilityAgent, FibonacciAgent, PatternRecognitionAgent, MarketStructureAgent,
+    StatisticalProbabilityAgent, MonteCarloAgent, MLTreeEnsembleAgent,
+    NeuralNetworkAgent, HiddenMarkovModelAgent, MeanReversionAgent, TimeSeriesAgent,
+    AnomalyDetectionAgent, LiquidityHunterAgent, SmartMoneyAgent, OrderFlowAgent,
+    LondonSessionAgent, NewYorkSessionAgent, COTPositioningAgent,
+    DealerBehaviourAgent, ECBAgent, FedAgent, RateDifferentialAgent,
+    EconomicCalendarAgent, RiskSentimentAgent, DevilsAdvocateAgent,
+    RiskOfficerAgent, ChiefStrategistAgent,
+)
 
 
-    # Seat 10
-    registry.register(
-        MonteCarloAgent()
-    )
+def register_core_agents(registry, *, agent_ids=None):
+    """Register the full catalogue, or an explicit subset, atomically.
 
-
-    # Seat 11
-    registry.register(
-        MLTreeEnsembleAgent()
-    )
-
-
-    # Seat 12
-    registry.register(
-        NeuralNetworkAgent()
-    )
-
-
-    # Seat 13
-    registry.register(
-        HiddenMarkovModelAgent()
-    )
-
-
-    # Seat 14
-    registry.register(
-        MeanReversionAgent()
-    )
-
-
-    # Seat 15
-    registry.register(
-        TimeSeriesAgent()
-    )
-
-
-    # Seat 16
-    registry.register(
-        AnomalyDetectionAgent()
-    )
-
-
-    # Seat 17
-    registry.register(
-        LiquidityHunterAgent()
-    )
-
-
-    # Seat 18
-    registry.register(
-        SmartMoneyAgent()
-    )
-
-
-    # Seat 19
-    registry.register(
-        OrderFlowAgent()
-    )
-
-
-    # Seat 20
-    registry.register(
-        LondonSessionAgent()
-    )
-
-
-    # Seat 21
-    registry.register(
-        NewYorkSessionAgent()
-    )
-
-
-    # Seat 22
-    registry.register(
-        COTPositioningAgent()
-    )
-
-
-    # Seat 23
-    registry.register(
-        DealerBehaviourAgent()
-    )
-
-
-    # Seat 24
-    registry.register(
-        ECBAgent()
-    )
-
-
+    Registration makes implementations available. CouncilRunner separately
+    enforces mode, causal inputs and source admission before dispatch.
+    """
+    if not isinstance(registry, AgentRegistry):
+        raise TypeError("Core registration requires AgentRegistry.")
+    factories = {factory.agent_id: factory for factory in CORE_AGENT_FACTORIES}
+    if len(factories) != AgentRegistry.EXPECTED_COUNCIL_SIZE:
+        raise RuntimeError("Core catalogue must contain exactly 31 unique implementations.")
+    requested = tuple(factories) if agent_ids is None else tuple(agent_ids)
+    if len(requested) != len(set(requested)):
+        raise ValueError("Registration request contains duplicate agent IDs.")
+    if set(requested)-factories.keys():
+        raise ValueError("Registration request contains unknown agent IDs.")
+    for agent_id in requested:
+        if registry.is_registered(agent_id):
+            raise ValueError(f"Agent already registered: {agent_id}")
+    selected = set(requested)
+    registry.register_many(factory() for factory in CORE_AGENT_FACTORIES if factory.agent_id in selected)
     return registry

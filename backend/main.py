@@ -1,4 +1,4 @@
-from config.settings import (
+from backend.config.settings import (
     PROJECT_NAME,
     VERSION,
     ENVIRONMENT

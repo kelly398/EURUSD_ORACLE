@@ -5,6 +5,8 @@ from datetime import (
 from backend.agents.contracts import (
     AgentContext
 )
+from backend.agents.council_inputs import ExecutionMode, CouncilSupplementalInputs
+from backend.agents.fed_input_readiness import FedInputNotReady
 
 from backend.market_state.candle_repository import (
     CandleRepository
@@ -49,7 +51,8 @@ class AgentContextFactory:
         macro_calendar_lookahead_days=370,
         ecb_rate_repository=None,
         economic_calendar_repository=None,
-        fed_candidate_repository=None
+        fed_candidate_repository=None,
+        council_input_provider=None
     ):
 
         if candle_limit <= 0:
@@ -91,6 +94,12 @@ class AgentContextFactory:
                 "must be greater than zero."
             )
 
+
+        if council_input_provider is not None and not callable(
+            getattr(council_input_provider, "get_inputs_as_of", None)
+        ):
+            raise TypeError("Council input provider must implement get_inputs_as_of(as_of=...).")
+        self.council_input_provider = council_input_provider
 
         self.candle_limit = (
             candle_limit
@@ -284,8 +293,28 @@ class AgentContextFactory:
 
     def build(
         self,
-        unified_result
+        unified_result,
+        *,
+        mode=ExecutionMode.PRODUCTION,
+        supplemental=None
     ):
+
+        mode = ExecutionMode(mode)
+        if supplemental is not None and self.council_input_provider is not None:
+            raise ValueError("Supply either explicit Council inputs or a configured provider.")
+        if supplemental is None and self.council_input_provider is not None:
+            supplemental = self.council_input_provider.get_inputs_as_of(
+                as_of=unified_result.snapshot.as_of
+            )
+        if supplemental is None:
+            supplemental = CouncilSupplementalInputs()
+        if not isinstance(supplemental, CouncilSupplementalInputs):
+            raise TypeError("Council inputs must be CouncilSupplementalInputs.")
+        supplemental = CouncilSupplementalInputs.model_validate(supplemental.model_dump())
+        if mode == ExecutionMode.PRODUCTION and supplemental.fed_data:
+            raise FedInputNotReady(
+                "Production Fed context delivery remains blocked pending source admission."
+            )
 
         snapshot = (
             unified_result.snapshot
@@ -402,6 +431,9 @@ class AgentContextFactory:
         # ==================================
 
         return AgentContext(
+
+            execution_mode=mode,
+            **supplemental.model_dump(),
 
             symbol=
                 snapshot.symbol,

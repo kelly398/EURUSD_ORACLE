@@ -361,8 +361,8 @@ def main():
 
 
     assert (
-        registry.implemented_count
-        == 24
+        registry.registered_count
+        == 31
     )
 
 
@@ -370,7 +370,7 @@ def main():
         len(
             registry.missing_agent_ids
         )
-        == 7
+        == 0
     )
 
 
@@ -451,6 +451,8 @@ def main():
     )
 
 
+    print(f"Blocked agents: {result.blocked_count}")
+
     for execution in result.executions:
 
         print(
@@ -482,6 +484,9 @@ def main():
             )
 
 
+        if execution.blockers:
+            print("     BLOCKED: " + ", ".join(execution.blockers))
+
         if (
             execution.error
             is not None
@@ -500,7 +505,7 @@ def main():
 
     assert (
         result.succeeded_count
-        == 24
+        == 23
     )
 
 
@@ -512,14 +517,15 @@ def main():
 
     assert (
         result.missing_agent_ids
-        == (
-            "fed",
-            "rate_differential",
-            "economic_calendar",
-            "risk_sentiment",
-        )
+        == ()
     )
 
+
+    assert result.blocked_count == 5
+    assert tuple(e.agent_id for e in result.blocked_executions) == (
+        "cot_positioning", "fed", "rate_differential", "economic_calendar", "risk_sentiment",
+    )
+    assert all(e.opinion is None and e.error is None and e.blockers for e in result.blocked_executions)
 
     # CouncilRunner must restore
     # deterministic seat order after
@@ -537,7 +543,7 @@ def main():
         == list(
             range(
                 1,
-                25,
+                29,
             )
         )
     )
@@ -551,7 +557,7 @@ def main():
         len(
             result.opinions
         )
-        == 24
+        == 23
     )
 
 

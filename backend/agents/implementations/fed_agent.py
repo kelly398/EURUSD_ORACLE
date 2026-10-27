@@ -1,8 +1,8 @@
 
 """Seat 25 F4.4.1: offline, contextual Fed target-range interpretation.
 
-The Fed policy calendar, independent source-version attestations, Council
-registration, persistence, and trade-direction mapping are NOT integrated.
+The Fed policy calendar, independent source-version attestations, production
+admission, persistence, and trade-direction mapping are NOT integrated.
 Valid F1 economic hashes establish only internal consistency, not authenticity.
 """
 
