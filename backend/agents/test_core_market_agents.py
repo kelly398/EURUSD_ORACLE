@@ -190,6 +190,8 @@ def main():
     )
 
 
+    print(f"Blocked agents: {result.blocked_count}")
+
     for execution in (
         result.executions
     ):
@@ -245,6 +247,9 @@ def main():
             )
 
 
+        if execution.blockers:
+            print("     BLOCKED: " + ", ".join(execution.blockers))
+
         if (
             execution.error
             is not None
@@ -263,7 +268,7 @@ def main():
 
     assert (
         result.succeeded_count
-        == 24
+        == 23
     )
 
 
@@ -277,20 +282,21 @@ def main():
         len(
             result.missing_agent_ids
         )
-        == 4
+        == 0
     )
 
 
     assert (
         result.missing_agent_ids
-        == (
-            "fed",
-            "rate_differential",
-            "economic_calendar",
-            "risk_sentiment",
-        )
+        == ()
     )
 
+
+    assert result.blocked_count == 5
+    assert tuple(e.agent_id for e in result.blocked_executions) == (
+        "cot_positioning", "fed", "rate_differential", "economic_calendar", "risk_sentiment",
+    )
+    assert all(e.opinion is None and e.error is None and e.blockers for e in result.blocked_executions)
 
     seat_numbers = [
 
@@ -301,35 +307,7 @@ def main():
     ]
 
 
-    assert (
-        seat_numbers
-        == [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23,
-            24
-        ]
-    )
+    assert seat_numbers == list(range(1,29))
 
     assert (
         len(
@@ -364,7 +342,7 @@ def main():
         len(
             result.opinions
         )
-        == 24
+        == 23
     )
 
 

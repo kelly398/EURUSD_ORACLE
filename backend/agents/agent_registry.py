@@ -187,18 +187,19 @@ class AgentRegistry:
 
     @property
     def implemented_count(self):
+        """Compatibility name for registered implementation count, not eligibility."""
+        return self.registered_count
 
-        return len(
-            self._agents
-        )
+    @property
+    def registered_count(self):
+        return len(self._agents)
 
 
     @property
     def registered_agent_ids(self):
 
-        return tuple(
-            self._agents.keys()
-        )
+        return tuple(spec.agent_id for spec in sorted(self._manifest, key=lambda s: s.seat_number)
+                     if spec.agent_id in self._agents)
 
 
     @property
@@ -298,12 +299,10 @@ class AgentRegistry:
             )
 
 
-        return tuple(
-            pairs
-        )
+        return tuple(sorted(pairs, key=lambda pair: pair[0].seat_number))
 
 
-    def register(
+    def _validate_candidate(
         self,
         agent: BaseAgent
     ):
@@ -369,9 +368,35 @@ class AgentRegistry:
             )
 
 
-        self._agents[
-            agent.agent_id
-        ] = agent
+        return agent
+
+    def register(self, agent: BaseAgent):
+        self.register_many((agent,))
+
+    def register_many(self, agents):
+        """Validate the entire batch before adding any implementation."""
+        candidates = tuple(agents)
+        ids = []
+        for agent in candidates:
+            self._validate_candidate(agent)
+            ids.append(agent.agent_id)
+        if len(ids) != len(set(ids)):
+            raise ValueError("Registration batch contains duplicate agent IDs.")
+        self._agents.update((agent.agent_id, agent) for agent in candidates)
+
+    def eligibility(self, agent_id, context, *, mode="production"):
+        """Dispatch readiness is separate from registered implementation availability."""
+        from backend.agents.execution_policy import assess_eligibility
+        spec = self.get_spec(agent_id)
+        if not self.is_registered(agent_id):
+            from backend.agents.execution_policy import AgentEligibility
+            from backend.agents.council_inputs import ExecutionMode
+            return AgentEligibility(agent_id, ExecutionMode(mode), ("IMPLEMENTATION_NOT_REGISTERED",))
+        return assess_eligibility(spec, context, mode=mode)
+
+    def get_eligible_by_stage(self, stage, context, *, mode="production"):
+        return tuple((spec, agent) for spec, agent in self.get_registered_by_stage(stage)
+                     if self.eligibility(spec.agent_id, context, mode=mode).allowed)
 
 
     def get_agent(
@@ -392,4 +417,3 @@ class AgentRegistry:
                 "implemented or registered: "
                 f"{agent_id}"
             )
-            

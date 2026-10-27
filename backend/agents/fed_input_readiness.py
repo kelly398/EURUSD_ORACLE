@@ -27,7 +27,7 @@ class FedRateInputStatus(str, Enum):
 
 
 class FedInputNotReady(RuntimeError):
-    """Fed Council registration must remain disabled."""
+    """Fed operational admission is disabled; catalogue registration is separate."""
 
 
 @dataclass(frozen=True)
@@ -53,6 +53,7 @@ class FedInputReadinessReport:
         return False
 
     def require_council_registration(self) -> None:
+        """Legacy operational-admission gate; not needed to catalogue a class."""
         raise FedInputNotReady(
             "Fed Seat 25 registration blocked: " + "; ".join(self.blockers)
         )
