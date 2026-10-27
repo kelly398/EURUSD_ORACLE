@@ -1,0 +1,124 @@
+EUR/USD ORACLE — canonical Council consolidation
+October 27, 2026 (America/Cancun)
+
+This checkpoint supersedes the earlier split registration/orchestration design
+described in COUNCIL_IMPLEMENTATION_2026-10-27.txt.
+
+ONE CATALOGUE
+
+register_core_agents.py owns CORE_AGENT_FACTORIES for all 31 implementations.
+register_core_agents(AgentRegistry()) now registers 31 seats: 28 primary,
+two governance, one synthesis. AgentRegistry.register_many validates the whole
+batch before mutation. registered_count measures available implementations;
+implemented_count remains a compatibility alias. Neither count grants admission.
+An explicit agent_ids subset supports isolated tests and compatibility adapters.
+
+ONE RUNNER
+
+CouncilRunner in council_runner.py owns primary -> governance -> synthesis.
+run_primary remains available for existing callers. run executes the full cycle.
+Both use execution_policy.py and the same registry. Results distinguish SUCCESS,
+ERROR and BLOCKED. Blocked agents are not invoked, produce no opinion, and carry
+stable reason codes. missing_agent_ids means no registered implementation;
+it is separate from blocked_executions and execution errors.
+
+Only successful opinions move to the next stage. Canonical identities, role,
+timestamp, stage ordering, causal inputs, numeric finiteness and input mutation
+are checked. Caller-supplied stage opinions cannot enter a fresh full cycle.
+The top-level decision is HOLD when any seat is missing, blocked or erroneous.
+execution_authorized remains False; this work does not implement broker execution.
+
+EXPLICIT MODE AND ADMISSION
+
+ExecutionMode is production or research. Context and runner must match; the
+runner refuses a mode mismatch. Both default to production, which is conservative
+and does not admit Fed or calendar sources automatically. Research must be chosen
+explicitly for supplied candidate/synthetic analysis.
+
+Production Fed and rate-differential dispatch consume the existing Fed readiness
+blockers. The actual source-version/calendar restrictions remain closed. Declared
+calendar coverage alone cannot grant production calendar admission. Successful
+crypto tests, catalogue registration and a working FRED key cannot override those
+gates. Fed persistence and historical-replay gates were not changed.
+
+CANONICAL CONTEXT AND FACTORY
+
+AgentContext in contracts.py now owns typed optional cross-asset, calendar,
+portfolio risk, reliability and synthesis fields, plus stage handoff opinions.
+Shared input models live in council_inputs.py. Validation formerly isolated in
+CouncilAnalysisContext now protects canonical callers too. Unknown fields are
+rejected, including invented authorization flags. Original market, ECB, COT, Fed,
+and calendar causal checks remain in place.
+
+AgentContextFactory.build(unified_result, mode=..., supplemental=...) returns
+the canonical AgentContext. supplemental must be CouncilSupplementalInputs;
+it cannot replace market identity or inject precomputed opinions. Alternatively,
+a constructor-injected provider may implement get_inputs_as_of(as_of=...) and
+return an already-collected typed bundle. The factory refuses simultaneous
+explicit/provider input sources and revalidates the returned data.
+Production Fed injection is refused before market queries. Explicit research
+input delivery remains possible. No provider/network collector is enabled by
+default, and missing data is not synthesized.
+
+COMPATIBILITY
+
+research_council.py is now a thin adapter:
+  build_research_registry -> register_core_agents
+  register_research_seats -> the canonical catalogue's subset registration
+  ResearchCouncilRunner -> CouncilRunner(mode=research), with no run override
+  ResearchCouncilRun -> CouncilRun alias
+
+council_analysis_context.py retains a research-only compatibility view; it no
+longer owns duplicated fields or validation. New code should use AgentContext.
+The research JSON CLI directly invokes the canonical catalogue and runner.
+It includes decision and per-agent blocker reasons in its output.
+
+VERIFICATION
+
+Final combined regression: 1,245 passed, no failures or skips, 555 subtests
+passed. All 295 backend Python files passed syntax parsing; git diff --check
+reported no whitespace errors. These are implementation checks, not a claim
+of live source admission, profitability or complete trading-system readiness.
+
+test_canonical_council.py directly exercises full registration, atomic batches,
+mode mismatch, production Fed denial, no invocation of blocked agents, primary
+errors vs blocked inputs, mutation detection, wrong identities, symbol/model scope,
+canonical factory/provider delivery, future-input rejection and stage injection.
+
+test_full_research_council.py uses the canonical APIs with all 31 real agent
+implementations, frozen existing model artifacts, and clearly synthetic inputs.
+It runs twice and checks deterministic opinions/order, HOLD and no execution.
+Synthetic reliability values are fixture data, not validated live weights.
+
+The legacy historical integration now checks 31 registered, zero missing,
+23 successful primary opinions, five blocked primary seats, zero agent errors.
+That fixture does not load COT data, so Seat 22 is now explicitly BLOCKED there;
+the COT implementation and stored data have not been reopened or modified.
+Fed, rate differential, calendar and sentiment also report missing/admission
+blockers explicitly. This is a more truthful fixture result than a neutral
+opinion from absent data. Model inference and anti-lookahead assertions still pass.
+The live integration script has matching assertions but was not executed because
+MT5 freshness/connection was not restored as part of this refactor.
+
+Evidence:
+  logs/canonical_full_regression.log
+  logs/canonical_historical_integration.log
+  logs/canonical_legacy_runner.log
+  logs/canonical_registry_check.log
+  logs/canonical_factory_check.log
+  logs/canonical_dataset_check.log
+  logs/canonical_models_check.log
+  logs/canonical_macro_context.log
+  logs/canonical_ecb_regression.log
+  logs/full_council_research_result.json
+  logs/canonical_production_policy_result.json (SYNTHETIC policy test)
+
+OPERATING LIMITS
+
+This consolidation completes the requested central wiring. Source admission,
+comprehensive verified calendar coverage, real portfolio telemetry, validated
+reliability weights, fresh MT5 ingestion, economic backtesting and paper trading
+remain separate requirements. No live trading was activated, no database
+migration/backfill was run, and the reserved HMM evaluation was not rerun.
+The user's earlier MT5 edits and the prior audit fixes were preserved.
+Changes are local and uncommitted.

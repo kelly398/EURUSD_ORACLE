@@ -1,0 +1,188 @@
+EUR/USD ORACLE - adaptation implementation checkpoint 1
+October 27, 2026
+
+Later checkpoint: CLOCK_EPOCH_MILESTONE_2026-10-27.txt adds the server-bound forward
+UTC feed. The status below records milestone 1 at the time it was verified.
+
+STATUS
+
+The durable decision-memory foundation is implemented and verified. It uses the
+existing canonical registry and CouncilRunner. It does not introduce another
+agent catalogue, alter the 31 seats, train models or authorize execution.
+
+Live data restoration is still open. The user's existing supervisor was tested
+for 75 seconds inside and outside the sandbox. Outside the sandbox both workers
+connected to MT5. They then correctly refused raw quote timestamps approximately
+7,200 seconds ahead of the independently checked UTC clock. Both bounded sessions
+stopped. No continuous supervisor was left running by these checks.
+
+The connection issue and timestamp issue are distinct. HFM publishes winter
+GMT+2 / summer GMT+3 server time with European seasonal transition dates:
+  https://www.hfm.com/int/en/trading-instruments/trading-hours
+MetaTrader's Python tick-history documentation describes UTC timestamps:
+  https://www.mql5.com/en/docs/python_metatrader5/mt5copyticksrange_py
+The observed difference is consistent with a server-wall-clock convention, but
+that is an inference, not historical UTC certification. No two-hour subtraction,
+timestamp rewrite, guard bypass or legacy data conversion was enabled.
+
+IMPLEMENTED
+
+1. Baseline and dependency preservation.
+   requirements-lock.txt now includes the installed ML/runtime dependencies and
+   their versions, including CPU Torch and its official wheel listing. Installed
+   dependency constraints pass pip check. This is a Windows x64 / Python 3.13
+   version snapshot; wheel hashes and a clean-environment restore are still
+   unverified. The initial baseline hashed 405 source/model/configuration files.
+   All 107 captured non-Python model/dataset artifacts remained unchanged.
+
+2. Read-only market-data health command.
+   backend/runtime/check_market_data.py distinguishes terminal attachment,
+   connection, raw quote timestamps and database freshness. It uses the existing
+   timestamp guard and a read-only database transaction, with a bounded statement
+   timeout. Terminal errors are reduced to safe codes/types. It does not ingest
+   data, print account details or send orders. Its default attach timeout matches
+   the existing 60-second provider timeout.
+
+3. Decision records in backend/learning.
+   memory.py stores a complete canonical context, per-seat observations, blocked
+   and error states, final decision, policy inputs, provenance and content hashes.
+   service.py delegates analysis to the canonical runner and records its result;
+   it contains no alternate execution stages or registration logic.
+
+   Run provenance fingerprints source/configuration versions, installed package
+   versions and model artifacts. Source/artifact changes during analysis prevent
+   committing the cycle. This does not certify the truth of source data or replace
+   a restorable model/source archive.
+
+4. Atomic writes and restart behavior.
+   A cycle and its agent/forecast rows commit together. Scope + instrument + M5
+   timestamp + execution mode give a stable identity. An identical retry reuses
+   the first record and recording time; different content under that identity is
+   a conflict. Measured runtimes are retained separately from logical identity.
+   Forecast and outcome content cannot be overwritten through this API.
+
+5. Explicit, versioned forecast targets.
+   Forecasts require an operator-supplied target version, horizon, neutral band,
+   permitted quote age and commission assumption. No horizon is inferred from an
+   agent's name. Contextual/governance outputs are retained as observations, not
+   scored as directional forecasts. Directional abstentions can be evaluated
+   against an explicit neutral target.
+
+6. Delayed outcomes and availability.
+   Scoring requires a mature target and an already available quote at or just
+   before the target boundary. Entry quotes must satisfy the declared age bound.
+   Target labels use mid-quote movement. Hypothetical directional results cross
+   the actual bid/ask spread and subtract the stated commission. Neutral outputs
+   receive no fictional fill or P&L. Financing, slippage and execution latency are
+   outside this first cost model and are explicitly identified as such.
+
+   Research runs cannot be relabelled live; a new live forecast cannot be created
+   after its horizon. Synthetic, historical research and live origins/scopes are
+   explicitly separated, including outcome quotes. Outcomes are available to
+   historical performance queries only after actual recording/receipt times;
+   scoring a historical forecast today does not backdate its availability.
+
+7. Database integration.
+   Five new, initially empty PostgreSQL tables were installed:
+     oracle_memory_schema (contains the version-1 marker)
+     oracle_council_cycles
+     oracle_agent_observations
+     oracle_forecasts
+     oracle_forecast_outcomes
+   Installation uses isolated metadata, without the legacy Base.create_all path.
+   Unknown schema versions, partial schemas and incompatible primary keys are
+   refused. Existing market/training tables were retained. The production journal
+   has zero cycle/prediction/outcome rows at this checkpoint; synthetic proofs
+   reside in a separate SQLite file, not in the production journal.
+
+8. CLI paths.
+   backend.agents.run_research_council remains read-only by default. --journal
+   opts into a local SQLite journal; --journal-postgres selects the configured
+   PostgreSQL journal. Recording requires explicit --scope and --origin. Forecast
+   specifications are optional, bounded, strictly parsed data. Omitting them
+   records observations without inventing prediction targets.
+
+   backend.learning.settle_outcomes accepts bounded, typed quote batches. Each
+   outcome write is atomic and idempotent. Invalid, premature, conflicting,
+   duplicate or nonfinite input is rejected. The command does not fetch market
+   data, fit models, update agent weights or execute orders.
+
+9. Ingestion shutdown.
+   Both existing workers now handle a stop during reconnect sleep without the
+   KeyboardInterrupt traceback observed during the bounded supervisor test.
+   The existing provider, timestamp guard and historical timestamp-boundary
+   tests were preserved.
+
+USAGE
+
+Read-only health check:
+  .\oracle_env\Scripts\python.exe -m backend.runtime.check_market_data
+
+Record clearly synthetic research with explicit targets:
+  .\oracle_env\Scripts\python.exe -m backend.agents.run_research_council --context logs/synthetic_full_council_context.json --journal logs/synthetic_council_memory.sqlite3 --scope YOUR_EXPERIMENT_VERSION --origin synthetic --forecast-specs logs/memory_cli_forecast_specs.json
+
+To use the configured PostgreSQL journal, substitute --journal-postgres for the
+--journal PATH pair. Keep synthetic demonstrations in their separate SQLite file.
+
+Score supplied, explicitly identified outcome quotes:
+  .\oracle_env\Scripts\python.exe -m backend.learning.settle_outcomes --journal logs/synthetic_council_memory.sqlite3 --quotes logs/memory_cli_quotes.json
+
+The example forecast target is a research mid-quote hypothesis, not a claim that
+it matches every model's training label or is a validated trading policy. New
+experiments need new scopes when code, policy, input or target definitions change.
+
+VERIFICATION
+
+  138 tests passed; 81 subtests passed.
+  Includes memory transactions, concurrent duplicate writers, durable restart,
+  rollback after injected storage failure, schema refusal, causal outcome reads,
+  long/short/neutral costs, clock/origin boundaries, worker shutdown, canonical
+  Council integration and all 31 real implementations on synthetic inputs.
+  Evidence: logs/adaptive_memory_regression.log
+
+  PostgreSQL integration passed inside a rolled-back transaction: one cycle,
+  31 observations, one forecast and one outcome, plus idempotent retries and
+  causal performance reads. DDL/data were rolled back after that test.
+  Evidence: logs/memory_postgres_verification.json
+
+  The subsequent additive installation passed and contains only the schema marker
+  plus empty operational memory tables.
+  Evidence: logs/memory_postgres_installation.json
+
+  Real 31-seat JSON CLI passed on explicitly synthetic data, preserving HOLD and
+  execution_authorized=false. Retrying did not duplicate the cycle. The outcome
+  CLI stored a constructed synthetic scenario, explicitly not an actual fill.
+  Evidence: logs/memory_cli_proof.json and logs/memory_cli_settlement.json
+
+  Existing historical Council integration and anti-lookahead checks passed.
+  Evidence: logs/adaptive_memory_historical_regression.log
+
+  All 306 backend Python files parsed. Installed dependencies pass pip check.
+  No reserved evaluation, training, source-admission change or broker order was
+  performed. Code/model snapshot hashes are in the adaptation checkpoint logs.
+
+LIMITS AND NEXT WORK
+
+The first dependency to resolve is the broker timestamp convention. Bind an
+explicit, verified clock policy to this broker/feed, preserve raw source times,
+test seasonal transitions and query boundaries, and assess the existing archive
+before mixing corrected observations with it. Previously trained time-of-day,
+session and macro features also need assessment if the archive's clock domain
+differs. A current offset alone cannot certify old timestamps.
+
+The journal records returned Council runs. Failures before a valid context or
+fatal runner failures still need an operational-event path. Automatic capture,
+deterministic selection of the latest authoritative outcome quote, scheduling,
+recovery and health alerts remain subsequent integration work. Origin labels are
+explicit assertions; independent source admission is still required.
+
+This API is append-only and hash checked, but the database owner can still alter
+tables directly. A restricted application role and tested backup/restore policy
+are required before production operation. Full context snapshots include raw
+quote windows; storage sizing, compression/chunking and retention need evaluation
+before an always-on journal. No continuous recorder has been enabled.
+
+Adaptive weights, pattern retrieval, scenario expansion, costed walk-forward
+evaluation and paper-position management are still upcoming milestones. Frozen
+v1 artifacts and their already-consumed holdouts remain unchanged. The new memory
+is the evidence foundation for those improvements, not proof of profitability.

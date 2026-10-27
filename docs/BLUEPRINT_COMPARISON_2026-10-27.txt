@@ -1,0 +1,333 @@
+EUR/USD ORACLE: original blueprint versus current implementation
+Review date: October 27, 2026
+
+ASSESSMENT
+
+The implementation is more rigorous than the seven-page Version 1.1 blueprint
+about data contracts, causal timestamps, model compatibility, source provenance,
+and explicit failure states. It is less complete than the blueprint's intended
+end-to-end autonomous, continuously learning operation. These are different
+dimensions: stronger engineering does not establish stronger trading returns.
+
+All 31 seats now have implementations in the canonical registration and runner
+path. That milestone does not mean 31 independent learned predictors, 31 admitted
+production sources, or a completed hedge-fund operating system. The next major
+milestone should be a measurable prediction/outcome feedback loop and reliable
+shadow operation, rather than adding seats.
+
+REVIEW SCOPE AND EVIDENCE
+
+Read all seven pages of the user-supplied original PDF:
+  C:\Users\user\Downloads\Autonomous Multi-Agent Consensus Trading Intelligence System.pdf
+Its text was extracted to logs/original_blueprint_pdf_20261027.txt. Historical
+instructions in the document were treated as specifications to compare, not as
+authority to deploy, train, trade, or change financial limits.
+
+Inventoried and parsed all 295 backend Python files: 192 source/support modules
+and 103 test modules. The inventory is logs/blueprint_review_inventory.json.
+Reviewed the analytical implementations, canonical registration/context/runner,
+market-state and ingestion paths, database models, replay and dataset contracts,
+training/model registry infrastructure, and saved evaluation artifacts. Earlier
+database and source-admission audit evidence from this session is incorporated.
+This is a structural and focused implementation review, not a claim of formal
+proof or a fresh line-by-line review of every test and provenance module.
+
+The last completed consolidation regression recorded 1,245 passed tests and 555
+passed subtests in logs/canonical_full_regression.log. That was implementation
+validation, not an economic backtest. This comparison did not rerun training,
+reserved holdout evaluation, live MT5 ingestion, or order execution. The reserved
+HMM and neural v1 tests remain consumed and frozen. Application code was not
+changed for this review. A PDF reader was downloaded into the ignored logs audit
+directory; it was not added to application requirements.
+
+BLUEPRINT COVERAGE
+
+Data intelligence / market state:
+  Substantially implemented: PostgreSQL, quote ticks, broker candles, freshness
+  and quality checks, causal snapshots, trend, volatility, momentum, structure,
+  liquidity and timezone-aware sessions. Earlier read-only inspection found
+  roughly 30.7 million ticks and 75,528 canonical M5 broker candles. However,
+  the latest stored tick/candle evidence was October 7. Live MT5 checks failed
+  during the earlier audit. Current operation is therefore not established.
+
+Council of 31:
+  Implemented as a canonical catalogue, staged runner and typed context. Primary
+  opinions precede governance, which precedes synthesis. Registration, missing
+  inputs, source admission and execution are distinct. The live context factory
+  still does not load COT by default, despite the COT agent/repository existing.
+  Supplemental delivery is an extension point, not a running collector service.
+
+Consensus:
+  An explicit initial implementation exists, with supplied reliability and regime
+  weights, category balancing, minimum support and independent governance vetoes.
+  Historical reliability is not yet learned and maintained by an outcome service.
+  Category balancing and confidence comparability require further research.
+
+MiroFish / scenario engine:
+  No separate implementation was found. Seat 10 performs a seeded empirical
+  bootstrap: 5,000 paths over three M5 bars, sampled independently from recent
+  returns. That is a useful small simulation component, but does not implement
+  the blueprint's separate scenario environment. It does not model a complete
+  strategy, regime transitions, spread evolution, correlated return blocks,
+  execution uncertainty or event-conditioned shocks. The PDF supplies a name and
+  high-level purpose, rather than a precise MiroFish integration specification.
+
+Risk governance:
+  Deterministic veto checks exist for supplied portfolio state, exposure, proposed
+  risk, drawdown, freshness, spread, ATR and event coverage. Position sizing,
+  broker reconciliation, order lifecycle and an independent execution-boundary
+  risk check are not complete. Fractional Kelly is not implemented. It should
+  remain a later sizing experiment requiring validated net-return distributions;
+  agent confidence cannot be substituted directly for a Kelly probability.
+
+Execution / paper trading:
+  No complete broker order/position management engine or paper trading lifecycle
+  was found. Council execution_authorized is deliberately always false. Research
+  inference and JSON output are not paper trading or a live capital allocator.
+
+Learning memory / database:
+  Raw inputs, macro data and ML training samples are persisted. No persistent
+  Council decision/agent prediction/outcome/performance ledger was found in the
+  inspected application schema. The blueprint's market_state, agents,
+  agent_predictions, simulations, trades and agent_performance roles are not all
+  implemented as persisted operating records. Agents may appropriately remain a
+  versioned code catalogue, but decision provenance and outcome memory must exist
+  somewhere durable. A context hash alone does not preserve a replayable decision.
+
+Five-minute cycle / monitoring:
+  The supervisor manages tick and M5 bar ingestion workers. It does not schedule
+  a durable Council -> proposal -> risk -> execution/paper -> outcome cycle.
+  backend/main.py prints a startup banner; it does not operate the entire system.
+  No application dashboard frontend was found. Restart supervision exists, but
+  cycle deadlines, durable retries, health telemetry, missed-cycle recovery,
+  alerting and complete operational observability remain additional work.
+
+Economic validation:
+  Chronological data partitions, label-horizon purging, causal replay, frozen
+  model evaluation and neural calibration are real strengths. They do not yet
+  constitute a costed Council-level backtest, walk-forward evaluation of adaptive
+  weights, execution stress test or prospective paper trading record.
+
+SPECIFIC FINDINGS THAT MATTER FOR ADAPTATION
+
+1. Pattern Recognition does not fulfill the original historical-similarity role.
+   backend/agents/implementations/pattern_recognition_agent.py checks the last two
+   candles for bullish/bearish engulfing and pin bars. Scores such as 0.80 and
+   0.55 are fixed; confidence follows score magnitude. It has no historical
+   retrieval store, learned pattern success rates, regime-conditioned outcomes,
+   or updating memory. It is an interpretable candlestick heuristic.
+
+   There is some analogue reasoning elsewhere: StatisticalProbabilityAgent
+   compares fast/slow move states within a recent 180-candle window. TimeSeries
+   refits an AR(1)-style relationship over recent returns. These respond to new
+   observations, but are not the persistent, evaluated learning system envisioned.
+
+2. Learning currently occurs mainly offline.
+   XGBoost and the three-member residual neural network load saved trained
+   artifacts. The neural input is one 27-feature row, not a recurrent candle
+   sequence. This architecture is not inherently wrong; a sequence model should
+   replace it only if controlled evaluation demonstrates incremental value.
+   HMM posterior state changes as new observations arrive, using frozen model
+   parameters. Regime inference and parameter learning are different capabilities.
+   No automatic mature-outcome -> reliability -> retraining -> promotion/rollback
+   operating loop was found.
+
+3. Regime information is not yet fully connected to adaptive governance.
+   HMM state probabilities, switch probability and entropy are contextual output.
+   Synthesis consumes caller-supplied regime_compatibility numbers; it does not
+   derive empirical compatibility from matured agent results in each HMM state.
+   Risk Officer does not directly turn HMM uncertainty or anomaly evidence into
+   a learned risk policy. Contextual data should influence justified constraints
+   and suitability without being forced into an invented directional vote.
+
+4. The recent category weighting deserves revision before production use.
+   chief_strategist_agent.py first computes each category's weighted mean and then
+   averages category scores equally. This limits category headcount dominance,
+   but cancels the absolute reliability scale within a category. A lone agent
+   with score -0.8 and reliability 0.01 gives its category -0.8, just as one with
+   reliability 0.99 does. An opposite +0.8 category still cancels it equally.
+   This was reproduced with the exact arithmetic used by the implementation.
+
+   This is a limitation of code introduced during our recent work, not a claim
+   that the existing implementation is seamless. A researched hierarchical
+   weighting policy should account for category evidence strength, uncertainty
+   and dependence, while preserving concentration limits. More category labels
+   do not prove independent evidence.
+
+5. Directional votes lack a common prediction target contract.
+   AgentOpinion records analysis time, direction, score and confidence, but no
+   explicit forecast horizon, target definition or cost assumption. TimeSeries
+   describes a next-M5-return forecast; Monte Carlo uses three bars; several
+   technical seats describe current conditions rather than an evaluated future
+   event. Averaging these scores does not itself make them comparable forecasts.
+   Introduce versioned forecast specifications and evaluate each seat against
+   its declared target. Retain separate contextual roles and confidence meanings.
+
+6. Many confidence values are signal-strength heuristics.
+   Several technical agents set confidence to abs(score). A 0.8 engulfing score
+   is not demonstrated to mean an 80% correct forecast. HMM posterior certainty
+   concerns latent state assignment, not trade profitability. Neural temperature
+   calibration already exists and should be preserved; the problem is the
+   comparability of all Council confidence fields and the absence of longitudinal
+   calibration for the whole ensemble. Averaged confidence is not automatically
+   a calibrated ensemble probability.
+
+7. Apparent diversity needs empirical measurement.
+   Many agents reuse the same candles, market-state features and quote-flow
+   engine. The ML models also share the same 27-feature schema. This is valid
+   modular design, but 20 agreeing transformations of one move are not 20
+   independent confirmations. Measure residual/error dependence and incremental
+   net value through chronological ablation. Do not infer independence from names.
+
+8. Risk checks need a concrete proposal to protect.
+   PortfolioRiskSnapshot supplies aggregate proposed risk/exposure amounts, but
+   there is no complete immutable trade intent tying direction, instrument,
+   quantity, entry, stop, account conversion, costs and expiry to those amounts.
+   Governance currently precedes final synthesis. A later execution design must
+   challenge and recheck the exact proposal after synthesis and immediately
+   before any order, including concurrent reservations and reconciliation.
+
+9. A stalled agent can stall the cycle.
+   CouncilRunner uses ThreadPoolExecutor/as_completed without a cycle deadline.
+   Exception isolation exists, but there is no hard containment of a hanging
+   task. A timeout on future.result alone would not stop a running thread or
+   avoid executor shutdown waiting. Bounded worker processes or another real
+   isolation mechanism need evaluation for the operational runner.
+
+10. Production data delivery is still incomplete.
+   A working FRED key and successful SP500/VIXCLS capture establish access to a
+   daily cross-asset proxy. They do not establish intraday sentiment, event
+   consensus forecasts, complete EUR/USD calendar coverage or Fed historical
+   source admission. Production Fed/rate/calendar gates remain closed. Today's
+   downloaded values cannot silently become historical as-of observations.
+
+11. Reproducibility and maintenance need finishing.
+   requirements-lock.txt omits ML dependencies declared in requirements.txt,
+   including scikit-learn, xgboost, joblib and torch. The running environment is
+   not yet fully reconstructible from that lock file. Earlier audit also found
+   training-index schema drift, manifest accounting that needs reconciliation,
+   and a recursive error-helper branch in audit_ml_dataset.py. The current
+   version-filtered query makes that branch unreachable during the passing audit;
+   it remains a defect worth correcting in a separate maintenance change.
+   Current MT5 boundary guards also do not certify the entire historical archive.
+
+WHAT THE SAVED MODEL RESULTS ACTUALLY SHOW
+
+Read existing evaluation.json files under backend/models/registry; did not rerun
+or select models against their held-out data.
+
+Fixed test samples:                 10,817
+Always predict test majority class: 35.70% accuracy (descriptive reference only)
+XGBoost:                           42.18% accuracy; macro F1 about 0.416
+Calibrated neural ensemble:         42.35% accuracy; macro F1 about 0.416
+Neural improvement in accuracy:      0.17 percentage points over XGBoost
+
+These are three-class direction/neutral classification results, not trade win
+rates or cost-adjusted returns. The neural ensemble is not shown to be materially
+superior to XGBoost by this small accuracy difference alone. The saved calibrated
+neural >=0.60 confidence slice contains only 99 observations, about 0.92% coverage,
+with 75.76% accuracy. It is too limited to justify a general high-win-rate claim or
+choosing a fresh threshold on the consumed test. Dependence and overlapping
+forecast horizons further limit treating observations as independent evidence.
+
+The HMM was accepted as contextual and remains non-directional. Its posterior
+certainty must not be presented as 90% confidence that a trade will win.
+The existing training dataset has 72,363 samples over roughly one year. Millions
+of raw ticks do not provide millions of independent, labelled market episodes.
+
+RECOMMENDED NEXT DESIGN AND IMPLEMENTATION ORDER
+
+A. Restore trustworthy operation and preserve the current baseline.
+   Resolve MT5 connectivity and timestamp-domain evidence; verify fresh closed
+   M5 bars and raw ticks. Complete the dependency lock and checkpoint the current
+   changes. Use concrete source-delivery acceptance tests rather than additional
+   layers of admission machinery without a delivery milestone. Preserve valid
+   gates and the frozen v1 artifacts.
+
+B. Build decision memory before automatic learning.
+   Persist each cycle, source/version identities, input snapshot references,
+   per-agent outputs/blockers, model/policy versions, proposed action and vetoes.
+   Assign stable cycle/prediction IDs with uniqueness constraints. After each
+   forecast horizon matures, attach an immutable outcome using correct bid/ask
+   and cost assumptions. Record abstentions and rejected proposals too, while
+   distinguishing hypothetical outcomes from actual fills. Recovery must neither
+   double-score outcomes nor silently rewrite earlier decisions.
+
+C. Establish an economic evaluation harness.
+   Replay baseline agents and Council policies chronologically with consistent
+   forecast/position rules, spread, commissions, slippage, latency and financing
+   where applicable. Measure calibration, coverage, net expectancy, drawdown and
+   regime/session stability, including uncertainty. Compare single-agent and
+   simple-policy baselines with the full Council. Use walk-forward evaluation,
+   label-horizon purging and explicit tracking of research trials. Already-used
+   test data becomes historical evidence; v2 needs a new evaluation protocol and
+   fresh prospective holdout, not another supposedly untouched run of v1.
+
+D. Add bounded adaptive weighting.
+   Derive time-decayed skill estimates from matured forecasts, conditional on
+   session, regime and horizon. Shrink sparse estimates toward conservative
+   priors and require sufficient evidence. Initially adapt suitability and
+   abstention before position size. Track both input distribution changes and
+   delayed prediction-loss changes: a new market distribution is not by itself
+   proof that a model has failed. Evaluate drift detectors as monitoring tools,
+   with explicit false-alert and trading-calendar treatment.
+
+E. Make historical pattern recognition real.
+   Keep named candlestick patterns as explainable baseline features. Add a
+   versioned memory of normalized historical windows: returns, candle geometry,
+   ATR, session, quote activity and spread conditions. Retrieve similar earlier
+   windows whose outcomes were already available at decision time. Exclude
+   overlapping/self matches and enforce distance/sample support requirements.
+   Return outcome distributions, adverse/favorable excursion, costs and
+   uncertainty, not a single attractive chart match. Abstain on unfamiliar
+   conditions. Start with a transparent nearest-neighbor baseline; compare
+   matrix-profile motifs and later learned representations on fresh evaluations.
+   A similar-looking path is a retrieval result, not proof of a predictive edge.
+
+F. Separate model experimentation from live promotion.
+   Drift or a scheduled trigger may launch an offline challenger. Evaluate it
+   against the frozen champion on chronological data, then run it in shadow.
+   Require recorded promotion criteria, artifact hashes and rollback support.
+   Online weighting and retraining are distinct decisions. Any future automatic
+   promotion authority should have explicit limits. Learned components must not
+   change source admission, financial limits or execution permissions themselves.
+
+G. Implement scenarios and paper operation before capital deployment.
+   Begin with empirically validated regime-conditioned/block-bootstrap paths and
+   adverse spread/gap/event stress scenarios. Check scenario calibration and
+   incremental decision value. A complex simulator is useful only if this
+   evidence supports it. Then build an idempotent M5 shadow scheduler, concrete
+   trade intents, persistent paper order/position state, reconciliation, deadlines,
+   health monitoring and a dashboard. Test restarts, duplicate events, stale
+   inputs and disconnections. Capital deployment remains a later separate step.
+
+ACCEPTANCE CRITERIA FOR THE ADAPTIVE MILESTONE
+
+  - Every evaluated forecast is traceable to its exact source/model/policy version.
+  - Outcomes become visible only after their declared maturity time.
+  - Replays reproduce decisions without future information.
+  - Adaptive weights demonstrate benefit over frozen and simple baselines across
+    successive unseen windows, after realistic costs and with uncertainty shown.
+  - Pattern retrieval excludes self/overlapping/future matches and abstains when
+    support is weak; selected examples do not substitute for aggregate evaluation.
+  - Missing/stale data, deadlines, restarts and duplicate deliveries have tested,
+    deterministic recovery or HOLD behavior.
+  - Risk enforcement acts on the exact proposed order and remains independent.
+  - Frozen artifacts, immutable outcomes and rollback keep experiments auditable.
+
+PRIMARY TECHNICAL REFERENCES FOR THE PROPOSALS
+
+UCR Matrix Profile research hub (motif and similarity methods):
+  https://www.cs.ucr.edu/~eamonn/MatrixProfile.html
+River delayed progressive validation (predict before the delayed label arrives):
+  https://riverml.xyz/latest/api/evaluate/progressive-val-score/
+River ADWIN implementation documentation (change detection):
+  https://riverml.xyz/latest/api/drift/ADWIN/
+Bailey, Borwein, Lopez de Prado and Zhu, The Probability of Backtest Overfitting:
+  https://www.davidhbailey.com/dhbpapers/backtest-prob.pdf
+
+These references support evaluation and algorithm choices, not a claim that the
+proposed methods generate EUR/USD alpha. The attainable target is a reliable,
+auditable system that adapts within tested bounds and recognizes when evidence
+is insufficient. Perfect recognition or consistently profitable autonomy has
+not been established by the blueprint, the current tests, or this review.
