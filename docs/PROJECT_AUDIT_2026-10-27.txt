@@ -1,0 +1,279 @@
+EUR/USD ORACLE — implementation and recovery audit
+Audit date: October 27, 2026 (America/Cancun)
+
+VERDICT
+
+You stopped during Seat 25, not after completing it. Seats 1–24 are registered.
+The Federal Reserve agent exists, but production registration, authenticated
+calendar delivery, persistent Fed data, and historical admission remain blocked.
+The latest committed milestone is F5.2, live Fed source capture and preview.
+The entire trading system is not yet implemented or operationally validated.
+
+CURRENT CHECKPOINT
+
+Repository: C:\Users\user\EURUSD_ORACLE
+Branch: milestone/fed-seat25
+HEAD: f17bf4e, October 14, 2026, 17:35:29 America/Cancun
+Subject: Add fail-closed Federal Reserve live source capture and preview
+
+There are 32 commits after the Seat 24 integration commit 98c8fbf.
+F4.5.17 is committed as 8fa6508; F4.5.18 is committed as 7aa155c.
+The Downloads F4518 README's “not yet committed” status is therefore outdated.
+Later commits include F3 integrity hardening (2608e1d), candidate diagnostics
+(d8ce17c), and live preview (f17bf4e).
+
+Pre-existing, uncommitted work preserved:
+  backend/data_engine/mt5_provider.py
+  backend/data_engine/test_mt5_timestamp_boundary.py
+
+WHAT WAS REVIEWED
+
+Inventory: 383 source/data/artifact files in backend, tests, and docs at the
+start of the audit, including 276 Python files. Every Python source file passed
+AST syntax parsing. The JSON inventory records paths, hashes, classes, imports,
+and test entry points. This is repository-wide structural coverage, not a claim
+that every line has received a complete formal correctness/security review.
+
+Reviewed the original Engineering Blueprint v1.1 DOCX, the supplied Seat 25
+handoff, F0.4 source audit, F4518 README, relevant sections of the large exported
+implementation conversation, and the older continuity report's recovery state.
+Compared loose Fed Python copies in Documents with the actual repository and
+listed the two Seat 25 ZIP handoffs without applying or executing them.
+Several Documents copies differ from the current repository. Do not overwrite
+the repository with them without reviewing a diff.
+
+Read central registration, contracts, live context factory, replay boundaries,
+Fed admission/certification/storage/preview code, database schema/indexes,
+market data provider changes, runtime supervision, dependencies, and selected
+model metadata/checksums. Executed targeted Fed tests and a broader explicit
+regression allowlist. Did not execute the reserved HMM evaluation, train models,
+run order execution, or apply migrations/backfills.
+
+IMPLEMENTATION MAP AGAINST BLUEPRINT
+
+Data infrastructure: implemented MT5 adapters, tick/candle ingestion, SQL storage,
+bounded historical population, validation, deduplication, query indexes, and
+worker supervision. Current live broker operation is not established.
+
+Market state: trend, volatility, momentum, structure, liquidity, and session
+engines exist. Their six individual regression scripts passed in this audit.
+
+Dataset: bounded population, replay, 27-feature contract, labels, chronological
+purging, manifest, and audit exist. The real stored dataset passed its audit.
+
+Council: manifest contains 31 seats; register_core_agents constructs 24 agents.
+Seats 1–8 technical, 9–16 quantitative, 17–21 microstructure/session, 22 COT,
+23 dealer-behaviour proxy, and 24 ECB are registered. Contextual seats must not
+be interpreted as independent directional votes. Registration does not by itself
+prove profitability or live readiness.
+
+Models: XGBoost, neural ensemble, and contextual HMM artifacts are present.
+All 11 individual file entries covered by the two available HMM/neural checksum
+manifests match. XGBoost has model/metadata/evaluation files but no equivalent
+checksum manifest in its registry folder. Existing evaluation JSON was inspected;
+no reserved evaluation was regenerated. Model accuracy is not an economic
+backtest after spreads, slippage, fees, and position management.
+
+Seat 25: Fed protocol, validated acquisition/extraction, candidate backfill,
+ALFRED corroboration, certification, storage guards, causal context/replay
+contracts, offline neutral agent, calendar parsers, evidence diagnostics,
+RFC 3161 verifier, candidate SQL ingress, and live preview exist.
+These components intentionally do not amount to production activation.
+
+Seats 26–28: rate differential, economic calendar agent, risk sentiment missing.
+Seats 29–31: Devil's Advocate, Risk Officer, Chief Strategist missing.
+
+Later blueprint layers: no completed MiroFish integration, system consensus
+scoring, independent portfolio risk engine, order/position execution engine,
+decision/outcome learning system, monitoring dashboard, full economic backtest,
+walk-forward system validation, paper-trading track record, or deployment gate
+was found. Seat 10 Monte Carlo is not the full MiroFish scenario engine.
+The application entry point currently prints startup information; it is not
+an assembled five-minute trading loop or a running dashboard/API service.
+
+DATABASE — DIRECTLY OBSERVED, OCTOBER 27
+
+Database connection works. The audit inspection connection enforced READ ONLY,
+20-second statement timeouts and two-second lock timeouts. The separate dataset
+integrity audit also enforced READ ONLY. No schema or market/training/macro data
+was changed by these inspection paths.
+
+ticks: approximately 30,721,657 rows (PostgreSQL estimate), 14 GB including indexes.
+Latest stored tick: 2026-10-07 16:31:14.973 UTC.
+broker_candles: exactly 75,528 EURUSD M5 rows, 25 MB including indexes.
+Coverage: 2025-10-02 00:00 UTC through 2026-10-07 16:25 UTC.
+ml_training_samples: exactly 72,363 rows, 98 MB including indexes.
+central_bank_rates: six ECB rows, no Fed rows.
+economic_calendar_events: eight ECB EUR events, no Fed calendar rows.
+cot_positioning: PostgreSQL estimates 207 rows; not re-researched or rewritten.
+
+Stored EURUSD market data is about 20 days behind the audit date. That may be
+because collection has been stopped; it is not evidence of a working live feed.
+The initial inspection found 27 quality-event rows by estimate. Two legacy live
+test paths subsequently attempted MT5 health checks and appended two broker_clock
+CRITICAL diagnostic rows through their existing logger (IDs 28 and 29; final
+exact quality-event count 29). Those diagnostic writes are distinct from the
+explicit read-only database inspections. No trades were submitted.
+
+Dataset split/label counts:
+                 LONG      NEUTRAL     SHORT      TOTAL
+train            18,106    13,893      18,463     50,462
+validation        3,700     3,510       3,874     11,084
+test              3,371     3,862       3,584     10,817
+total            25,177    21,265      25,921     72,363
+
+The correct existing manifest range is [2025-10-02, 2026-10-01).
+Train boundary: 2026-06-13 19:12 UTC.
+Validation boundary: 2026-08-07 09:36 UTC.
+The old conversation's October 2 end boundary would produce different splits;
+do not use that older command to reinterpret or regenerate the sealed dataset.
+Full stored dataset audit: expected 27 features PASS; target horizon PASS;
+split leakage NONE; total/splits/label counts match the manifest.
+This does not independently certify historical broker timestamp correctness.
+
+SEAT 25 — PRECISE REMAINING GATES
+
+1. Fed rate source/version admission is not available. ALFRED matching daily
+   rates corroborates economic consistency, not exact historic Fed byte custody
+   or intraday publication. The actual CentralBankRateStorage refuses Fed writes.
+   Mock-backed certification tests are not proof of actual Fed database writes.
+
+2. FOMC calendar acquisition/extraction produces quarantined candidates.
+   The crypto verifier proves only its explicitly scoped local cryptographic
+   checks. It does not certify Fed publisher authenticity, historical version
+   availability, trusted provisioning, historical revocation or OS isolation.
+   Successful crypto tests cannot authorize a calendar feed.
+
+3. AgentContext has Fed fields and replay locks, but actual source admission is
+   distinct from validating caller-supplied, internally consistent snapshots.
+   Production AgentContextFactory.build does not inject fed_data.
+   Candidate inspection and one-use live preview remain diagnostics.
+
+4. FedAgent exists and is neutral/contextual with score 0 and confidence 0.
+   Calendar interpretation and historical admission remain unavailable.
+
+5. register_core_agents does not register FedAgent. F7 production integration
+   and complete regression with admitted live/historical inputs are unfinished.
+
+These are explicit current source-code restrictions, not a new approval request
+or instructions adopted from the attached documents. The documents were used
+as evidence; their historical commands were not blindly executed.
+
+CONFIRMED PROBLEMS AND AUDIT CHANGES
+
+Fixed: python -m backend.main failed because main imported config.settings
+outside the backend package. Changed to backend.config.settings.
+That exposed another startup error: settings executed time.sleep(TICK_INTERVAL)
+although neither name was defined. Removed that stray executable statement.
+The module startup smoke now succeeds. Its SYSTEM ONLINE text is only a banner.
+
+Fixed: two “offline” certified-backfill tests constructed a real ALFRED client
+and failed without a registered FRED_API_KEY; with credentials they could also
+reach real sources. Injected the existing synthetic Fed/ALFRED transports.
+Strengthened the previously vacuous corroboration check to execute certification
+and replaced a catch-all exception swallow with the expected rejection assertion.
+Both storage entry points are asserted untouched for denied certification.
+No production admission gate was relaxed.
+
+Pending operational failure: legacy base-framework and feature-builder scripts
+use live MarketStateEngine and attempted MT5 initialization. They fail at the
+broker-clock quality gate with IPC timeout. They are not pure unit tests.
+Do not change quality thresholds to make these pass. Establish a healthy terminal,
+verify raw UTC-domain quote timestamps, and resume fresh data acquisition first.
+
+Pending reproducibility: pip check passed for the existing oracle_env, but
+requirements-lock.txt omits installed training/runtime dependencies such as
+scikit-learn, XGBoost, Torch, and joblib. requirements.txt omits MetaTrader5 while
+the existing lock includes it. A clean installation is not yet reproducible.
+
+Pending schema drift: the ORM's ix_ml_training_samples_training_slice includes
+dataset_version; the actual same-name PostgreSQL index does not. This is a
+performance/schema-alignment issue, not evidence that the data audit failed.
+create_all does not repair an existing same-name index. Plan an explicit additive
+migration/rebuild after checking lock/disk requirements, not a blind init_db run.
+
+Pending audit quality: audit_ml_dataset.record_error contains a recursive
+dataset-version branch. The current SQL filters to the expected dataset version,
+so the stored dataset audit passed; the branch is latent/unreachable under that
+query. Clean it up with a meaningful negative-case test before expanding scope.
+The dataset manifest's generation counters also do not reconcile directly:
+72,465 candidates vs 72,363 generated plus 5 boundary purges, 19 gaps, 265 replay
+errors. Recover generation logs/definitions before treating these as an exact
+accounting of disjoint candidate outcomes. Stored row counts do reconcile.
+
+Pending timestamp scope: the pre-existing MT5 guard rejects future/stale current
+quotes and future history rows. Its 14 offline tests pass. It does not prove that
+older timestamps are UTC: a historic offset can remain in the past and evade
+those checks. It also requires a fresh live quote for historical retrieval, which
+can block legitimate weekend/offline research. Review that operational contract
+before committing the unfinished change; do not guess/apply a broker offset.
+
+VALIDATION AND EVIDENCE
+
+Fed/timestamp/replay pytest: 1,152 passed, no skips, 468 subtests passed.
+OpenSSL: Git-bundled C:\Program Files\Git\usr\bin\openssl.exe, version 3.5.7.
+It was added to PATH for the test process only; no machine-wide change/install.
+The initial run without that PATH entry had 26 crypto skips; the final run
+executed those synthetic cryptographic cases successfully.
+
+Python: oracle_env Python 3.13.15. pip check: no broken installed requirements.
+Every original project Python source passed syntax parsing.
+11 available HMM/neural artifact checksum file entries match.
+Read-only full stored dataset audit passed.
+The reserved HMM evaluator was not run; only existing artifact checksums and
+stored evaluation metadata were inspected.
+
+Broader regression details are in logs/audit_regressions_20261027.json and the
+per-module logs. The initial main failure is superseded by the fixed startup
+smoke. Legacy live failures remain visible, not hidden by a green summary.
+Of 23 broader script checks, 20 passed on their first recorded run; the corrected
+startup smoke subsequently passed as well. The two remaining failures are the
+live base-framework and feature-builder paths requiring MT5 broker-clock access.
+Historical Council integration passed: 24 agents succeeded, zero agent failures,
+seven unregistered seats, and four missing primary agents. XGBoost and neural
+production registry loading passed. The latter also verified deterministic
+inference, calibration/normalization contracts, hashes and synthetic latency.
+
+Primary evidence files:
+  logs/audit_inventory_20261027.json
+  logs/audit_database_20261027.json
+  logs/audit_dataset_readonly_20261027.log
+  logs/audit_fed_pytest_verified_20261027.log
+  logs/audit_regressions_20261027.json
+  logs/audit_artifacts_20261027.json
+  logs/audit_external_copies_20261027.json
+  logs/audit_blueprint_20261027.txt
+
+RECOMMENDED CONTINUATION
+
+First checkpoint this review and the startup/offline-test fixes separately from
+the unfinished MT5 provider work. No staging or commit was performed by this audit.
+
+Next resolve the operational MT5 connection and raw timestamp domain, preserving
+the gates. Confirm healthy current ticks, closed M5 candles, and a synchronized
+market snapshot before claiming the live system is restored.
+
+Then finish a concrete Seat 25 admission milestone rather than adding more
+diagnostic prerequisite layers: define the actual evidence/trust policy, supply
+verifiable inputs, and prove the production storage/context/calendar path under
+that policy. Keep forward-only first-observed live availability separate from
+historical public-availability claims. If research admission needs evidence that
+does not exist, explicitly retain that restriction instead of manufacturing it.
+
+Only after those gates are satisfied: integrate Seat 25 into the Council, verify
+25 registered seats and six remaining, then proceed to Seats 26–31 and the later
+simulation/consensus/risk/execution/backtesting/paper-trading stages.
+
+ACCESS AND LIMITS
+
+Project editing and execution, the named Documents/Downloads materials, and the
+local database are accessible. No extra blanket permission is needed for the
+review. System-managed restrictions still apply outside the workspace, including
+some Git/protected paths; a specific approval will be requested if a necessary
+future operation requires it. The existing .pytest_cache directory was denied to
+Git's scan; tests ran with pytest's cache provider disabled successfully.
+
+No current external Fed/ECB web-source revalidation or claim of official current
+rate correctness is made here. This audit verifies implementation and stored
+evidence. It does not claim perfection, exhaustive formal proof, profitability,
+or live trading readiness.

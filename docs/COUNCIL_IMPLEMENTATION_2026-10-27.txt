@@ -1,0 +1,186 @@
+EUR/USD ORACLE — Seats 25–31 implementation checkpoint
+October 27, 2026 — America/Cancun
+
+UPDATE: The registration/orchestration split below was subsequently consolidated.
+See COUNCIL_CONSOLIDATION_2026-10-27.txt for the current canonical framework.
+The following text records the earlier research implementation checkpoint.
+
+STATUS
+
+All 31 agent implementations can now execute through an explicit research
+registry and staged runner: 28 primary agents -> two governors -> strategist.
+This is a software implementation/integration milestone, not production source
+admission, an economic backtest, or permission to trade.
+
+The existing production register_core_agents still registers Seats 1–24.
+Its Fed restrictions are preserved. No trading worker, broker order path,
+database migration, new model fitting or reserved HMM evaluation was activated.
+
+IMPLEMENTED SEATS
+
+25 Federal Reserve:
+  Reuses the existing neutral Fed agent and source/replay checks. Registered
+  only through the isolated research extension. Existing Fed calendar/source
+  admission restrictions remain explicit. Its output does not certify origin.
+
+26 Rate Differential:
+  Compares the latest announced ECB deposit-facility rate with the Fed target
+  midpoint. Reports percentage-point/basis-point differences and separate
+  availability/effective dates. Missing banks, ambiguous latest ECB records,
+  invalid paired Fed data, and nonfinite rates are rejected. The instruments
+  are not treated as matched-tenor market yields or a standalone FX forecast.
+
+27 Economic Calendar:
+  Reports known events, next event, release context and explicit event blackout
+  windows. Empty data without declared feed coverage means UNKNOWN, never
+  “no event risk.” Coverage is scoped to supplied sources and currencies.
+  All supplied EUR/USD events are conservatively relevant because the existing
+  schema has no verified event-impact classification. Half-open blackout is
+  [scheduled-before, scheduled+after). No forecast surprise model is invented.
+
+28 Risk Sentiment:
+  Describes aligned SP500 and VIXCLS close changes as risk_on_proxy,
+  risk_off_proxy or mixed_or_unchanged. Both series and matching observation
+  intervals are required. Missing/stale/misaligned inputs fail. Contextual only;
+  confidence describes measurement completeness, not prediction accuracy.
+
+29 Devil's Advocate:
+  Independently challenges missing primary results, insufficient directional
+  evidence, opposing support, category concentration and unavailable inputs.
+  Its veto is separate from directional voting.
+
+30 Risk Officer:
+  Requires explicitly configured risk limits and a supplied portfolio snapshot.
+  Checks kill switch, reconciliation, broker connectivity, portfolio/quote age,
+  drawdown, gross exposure including proposal, existing plus proposed risk,
+  per-trade risk, spread, ATR, declared event coverage and blackout. Uses the
+  worse of latest quote spread and the market-state average. Missing measures
+  block risk acceptance. All risk/exposure amounts must be in account currency.
+  No default capital allocation or unvalidated Kelly estimate is supplied.
+
+31 Chief Strategist:
+  Requires complete primary/governance evidence and explicit reliability/regime
+  weights and thresholds. Contextual opinions never enter directional scoring.
+  Scores are balanced by category so a larger category cannot gain influence
+  just by seat count. Categories are not claimed to be statistically independent.
+  Stale/missing evaluation weights, governance vetoes, insufficient evidence,
+  and missing Fed source certification produce HOLD. Any positive synthetic
+  candidate remains research-only: execution_authorized is always False.
+
+CONTRACT AND RUNNER
+
+backend/agents/council_analysis_context.py:
+  Immutable typed extension of AgentContext; no changes to the original context
+  or production factory are needed. Can wrap a validated existing context via
+  CouncilAnalysisContext.from_context(context, ...supplemental_inputs...).
+  Supplemental inputs cannot silently replace the base market/macro fields.
+  Future observations, invalid chronology, NaN/infinity, duplicate series,
+  duplicate/out-of-order/wrong-stage opinions and wrong identities are rejected.
+  Existing research calendar public-availability semantics are preserved:
+  late backfill receipt does not erase an already-public historical schedule.
+  Newly captured FRED closes instead use explicit first-observed availability.
+
+backend/agents/research_council.py:
+  build_research_registry() loads real Seats 1–24 and the remaining seven.
+  ResearchCouncilRunner.run(context) runs primary -> governance -> synthesis.
+  It owns stage handoffs, rejects caller-precomputed opinions and stage remapping,
+  preserves deterministic seat order, records agent errors, detects input mutation
+  and fingerprints the original context. Failed primaries remain missing from
+  governance input, causing vetoes/HOLD rather than successful neutral votes.
+  ResearchCouncilRun.is_complete means all agents executed successfully;
+  it does not mean inputs are externally admitted or trading is authorized.
+
+backend/agents/run_research_council.py:
+  Bounded JSON-only command line, no executable input/pickle. Rejects duplicate
+  JSON fields and nonfinite constants. Validates full causal input before running.
+
+  python -m backend.agents.run_research_council --context INPUT.json
+
+  Output is a JSON research record on stdout. PowerShell versions may encode
+  redirected output differently; the audit's saved example is normalized UTF-8.
+
+FRED CROSS-ASSET ACQUISITION
+
+backend/macro/cross_asset_client.py and capture_cross_asset.py:
+  A bounded client for official FRED SP500 and VIXCLS daily observations.
+  Verified TLS, fixed host/series, no redirects, bounded bytes/rows/time, strict
+  field/date/value validation, aligned closes, source-byte hashes, and no API
+  key in capture results or errors. Network exception text is sanitized because
+  request URLs carry API credentials. Missing credentials fail before a request.
+  Current download completion is available_at/ingested_at. An older observation
+  date is never converted into a claim of historical intraday availability.
+  Date-only closes use next New York midnight as a conservative observation-time
+  bound, intentionally delaying same-day use. This is not the exact close time.
+
+  python -m backend.macro.capture_cross_asset
+
+  The user's FRED account is suitable, but FRED_API_KEY was not configured at
+  the configuration check. Add an application-specific key to the existing .env:
+
+  FRED_API_KEY=your_registered_key
+
+  Preserve DATABASE_URL. Do not replace .env with .env.example; use the example
+  only as a guide. The key is not needed in chat. No live FRED request has been
+  validated yet; all capture tests used synthetic responses.
+
+Official references checked during implementation:
+  https://fred.stlouisfed.org/docs/api/api_key.html
+  https://fred.stlouisfed.org/docs/api/fred/realtime_period.html
+  https://fred.stlouisfed.org/series/SP500
+  https://fred.stlouisfed.org/series/VIXCLS
+  https://www.ecb.europa.eu/stats/policy_and_exchange_rates/key_ecb_interest_rates/html/index.ga.html
+  https://www.federalreserve.gov/economy-at-a-glance-policy-rate.htm
+
+VALIDATION
+
+Final combined regression: 1,223 passed, no skips or failures, 552 subtests
+passed. All 292 current backend Python files passed syntax parsing and
+git diff --check was clean. These are software checks, not live source or
+investment-performance certification.
+
+The complete 31-real-agent synthetic integration ran twice with unchanged
+existing model artifacts; every seat completed, opinions were deterministic,
+final result HOLD, and execution authorization False.
+Saved input/output are synthetic, not live market/economic evidence:
+  logs/synthetic_full_council_context.json
+  logs/full_council_research_result.json
+
+Targeted tests exercise each macro seat, timestamps, numeric boundaries,
+governance vetoes, category balance, duplicate inputs, source HTTP/JSON errors,
+credential redaction, primary failures, stage injection, and input transport.
+The combined Fed/crypto/remaining-seat regression is recorded in:
+  logs/remaining_seats_complete_regression.log
+Earlier targeted runs:
+  logs/full_research_council_tests.log
+  logs/remaining_seats_fed_regression.log
+
+The existing registry, Council runner, context-factory macro script and historical
+24-seat Council regression passed. Reserved HMM evaluation was not rerun;
+ordinary frozen-model inference in the integration is not that evaluation.
+  logs/remaining_seats_registry_regression.log
+  logs/remaining_seats_runner_regression.log
+  logs/remaining_seats_factory_regression.log
+  logs/remaining_seats_historical_regression.log
+
+STILL REQUIRED FOR PRODUCTION COMPLETION
+
+1. A configured FRED key and verified real source acquisition. A FRED account
+   alone is not the key, nor a comprehensive intraday economic-calendar feed.
+2. Fed historical/live/calendar admission under an actual evidence/trust policy.
+   Existing rate-storage and source-version restrictions were not bypassed by
+   this research implementation. No Fed rows were fabricated or backfilled.
+3. Verified calendar acquisition and an explicit coverage scope. Current ECB
+   events alone are not comprehensive EUR/USD macro-event coverage. Supplied
+   coverage metadata is not an independent certification of completeness.
+4. Real reconciled portfolio telemetry, explicit operator risk limits and
+   proposed-trade risk estimates. Synthetic test limits are not configuration.
+5. Validated out-of-sample reliability/regime weights and synthesis thresholds;
+   no equal-weight fallback or invented calibration is used.
+6. MT5 connection/timestamp diagnosis and fresh ingestion. The earlier live
+   broker-clock failures remain unresolved; this work did not restart ingestion.
+7. Economic walk-forward/stress/backtesting and paper operation, then a separate
+   production registration/activation decision. No profitability or perfection
+   claim is made from unit/integration success.
+
+Everything here is local and uncommitted. Existing MT5 timestamp edits and the
+earlier audit's startup/offline-test fixes have been preserved.
