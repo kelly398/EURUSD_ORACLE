@@ -203,6 +203,11 @@ def main():
 
         run_worker()
 
+    except KeyboardInterrupt:
+        # SIGBREAK may arrive during the reconnect sleep outside run_worker's
+        # inner try block. Shutdown remains a clean exit in that state too.
+        print("Tick ingestor stopped during reconnect.", flush=True)
+
 
     finally:
 

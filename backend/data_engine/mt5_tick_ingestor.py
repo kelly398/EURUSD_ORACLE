@@ -219,6 +219,8 @@ class MT5TickIngestor:
     def ingest_once(
         self
     ):
+        if getattr(self.provider, 'clock_policy', None) is not None:
+            raise RuntimeError("Clock-normalized ticks require the separate forward UTC store.")
 
         latest_price = (
             self.provider.get_price(

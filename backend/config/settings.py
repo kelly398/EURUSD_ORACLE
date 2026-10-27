@@ -7,5 +7,3 @@ ENVIRONMENT = "development"
 SYMBOL = "EUR_USD"
 
 DEFAULT_TIMEFRAME = "M5"
-
-time.sleep(TICK_INTERVAL)

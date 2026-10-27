@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "read_only": true,
+  "initialized": true,
+  "observations": [
+    {
+      "received_before": "2026-10-27T14:27:42.218695+00:00",
+      "received_after": "2026-10-27T14:27:42.218817+00:00",
+      "raw_time": 1793118465,
+      "raw_time_msc": 1793118465918,
+      "raw_rendered_as_utc": "2026-10-27T16:27:45.918000+00:00",
+      "skew_seconds": 7203.699182987213
+    },
+    {
+      "received_before": "2026-10-27T14:27:43.219328+00:00",
+      "received_after": "2026-10-27T14:27:43.219447+00:00",
+      "raw_time": 1793118465,
+      "raw_time_msc": 1793118465918,
+      "raw_rendered_as_utc": "2026-10-27T16:27:45.918000+00:00",
+      "skew_seconds": 7202.698553085327
+    },
+    {
+      "received_before": "2026-10-27T14:27:44.220221+00:00",
+      "received_after": "2026-10-27T14:27:44.221197+00:00",
+      "raw_time": 1793118468,
+      "raw_time_msc": 1793118468181,
+      "raw_rendered_as_utc": "2026-10-27T16:27:48.181000+00:00",
+      "skew_seconds": 7203.959803104401
+    }
+  ],
+  "query_evidence": [
+    {
+      "kind": "utc_request",
+      "requested_start": "2026-10-27T14:27:24.221672+00:00",
+      "requested_end": "2026-10-27T14:27:34.221672+00:00",
+      "row_count": 9,
+      "first_raw_msc": 1793111244454,
+      "last_raw_msc": 1793111253893
+    },
+    {
+      "kind": "raw_clock_request",
+      "requested_start": "2026-10-27T16:27:28+00:00",
+      "requested_end": "2026-10-27T16:27:38+00:00",
+      "row_count": 9,
+      "first_raw_msc": 1793118450359,
+      "last_raw_msc": 1793118456961
+    }
+  ],
+  "archive_samples": [
+    {
+      "stored_timestamp": "2025-10-24T12:00:00+00:00",
+      "mt5_raw_bar_matches_ohlc": true,
+      "stored_tick_timestamp_equals_raw_clock": true
+    },
+    {
+      "stored_timestamp": "2025-10-27T12:00:00+00:00",
+      "mt5_raw_bar_matches_ohlc": true,
+      "stored_tick_timestamp_equals_raw_clock": true
+    },
+    {
+      "stored_timestamp": "2026-03-27T12:00:00+00:00",
+      "mt5_raw_bar_matches_ohlc": true,
+      "stored_tick_timestamp_equals_raw_clock": true
+    },
+    {
+      "stored_timestamp": "2026-03-30T12:00:00+00:00",
+      "mt5_raw_bar_matches_ohlc": true,
+      "stored_tick_timestamp_equals_raw_clock": true
+    },
+    {
+      "stored_timestamp": "2026-10-07T16:25:00+00:00",
+      "mt5_raw_bar_matches_ohlc": true,
+      "stored_tick_timestamp_equals_raw_clock": true
+    }
+  ],
+  "hfm_company_match": true,
+  "company_sha256": "05480005be67a8e868addd003bf98b4ef8204834653335d7782cd6805049658a",
+  "server_sha256": "dcde2804e7ffca57ed5e4434558717b801a8549de02c2a389c2f94508bc99e4d",
+  "historical_utc_certified": false
+}
