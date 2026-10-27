@@ -205,6 +205,9 @@ def main():
 
         run_worker()
 
+    except KeyboardInterrupt:
+        print("M5 bar ingestor stopped during reconnect.", flush=True)
+
 
     finally:
 

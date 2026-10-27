@@ -62,6 +62,8 @@ class MT5BarIngestor:
 
 
     def ingest_once(self):
+        if getattr(self.provider, 'clock_policy', None) is not None:
+            raise RuntimeError("Clock-normalized bars require the separate forward UTC store.")
 
         price = self.provider.get_price(
             self.symbol
@@ -236,4 +238,3 @@ class MT5BarIngestor:
 
 
         return inserted
-        

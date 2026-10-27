@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "convention": "hfm_eu_wall_v1",
+  "symbol": "EURUSD",
+  "company_sha256": "05480005be67a8e868addd003bf98b4ef8204834653335d7782cd6805049658a",
+  "server_sha256": "dcde2804e7ffca57ed5e4434558717b801a8549de02c2a389c2f94508bc99e4d",
+  "evidence_sha256": "ec43a722243d192d112ea8ee2d45a0687af124041a0a833fe29cdf5a422832a4",
+  "implementation_sha256": "03a1811446de521f5481024df2ef8572b51a46746d61ec1135f9f26e6cf60645",
+  "source_policy_url": "https://www.hfm.com/int/en/trading-instruments/trading-hours",
+  "valid_from": "2026-10-27T14:27:44.221197Z",
+  "valid_until": "2026-11-26T14:27:44.221197Z",
+  "historical_admission": false
+}
