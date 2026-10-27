@@ -27,6 +27,13 @@ from backend.macro.test_fed_rate_extractor import (
     STATEMENT_URL,
 )
 
+from backend.macro.fed_rate_alfred_client import FedAlfredClient
+from backend.macro.test_fed_rate_alfred_client import (
+    FETCHED,
+    KEY,
+    FakeTransport,
+)
+
 
 class FakePlanner:
 
@@ -81,6 +88,18 @@ class FakeStorage:
 
 class FedCertifiedBackfillTests(TestCase):
 
+    def make_backfill(self, storage=None):
+        # Use real orchestration with synthetic transport, never ambient
+        # credentials or actual Federal Reserve / ALFRED connections.
+        return FedCertifiedBackfill(
+            planner=FakePlanner(),
+            alfred=FedAlfredClient(
+                api_key=KEY,
+                opener=FakeTransport(),
+                clock=lambda: FETCHED,
+            ),
+            storage=storage,
+        )
 
     def test_01_corrobation_creates_non_persistable_certification(self):
 
@@ -89,25 +108,24 @@ class FedCertifiedBackfillTests(TestCase):
         CORROBORATED, not persistence approval.
         """
 
-        backfill = FedCertifiedBackfill(
-            planner=Mock(),
-            alfred=Mock(),
+        backfill = self.make_backfill()
+        plan, pair, certification = backfill.certify_candidate(
+            STATEMENT_URL, date(2026, 9, 18),
         )
-
-        # checked through existing certification tests
         self.assertEqual(
-            FedCertificationLevel.CORROBORATED.value,
-            "corroborated",
+            certification.certification_level,
+            FedCertificationLevel.CORROBORATED,
         )
+        self.assertEqual(len(plan.candidate_snapshots), 2)
+        self.assertEqual(len(pair.observations), 2)
+        self.assertFalse(certification.persistence_authorized)
 
 
     def test_02_persistence_requires_authorized_certification(self):
 
         storage = FakeStorage()
 
-        backfill = FedCertifiedBackfill(
-            storage=storage
-        )
+        backfill = self.make_backfill(storage=storage)
 
         with self.assertRaises(
             FedCertifiedBackfillError
@@ -127,20 +145,16 @@ class FedCertifiedBackfillTests(TestCase):
 
         storage = Mock()
 
-        backfill = FedCertifiedBackfill(
-            storage=storage
-        )
+        backfill = self.make_backfill(storage=storage)
 
-        try:
+        with self.assertRaises(FedCertifiedBackfillError):
             backfill.persist_certified(
                 STATEMENT_URL,
                 date(2026,9,18),
             )
 
-        except Exception:
-            pass
-
         storage.store_many.assert_not_called()
+        storage.store_certified_fed_many.assert_not_called()
 
 
     def test_04_certification_levels_are_explicit(self):
