@@ -43,6 +43,7 @@ class WorkerSpec:
     name: str
 
     module: str
+    arguments: tuple[str, ...] = ()
 
 
 @dataclass
@@ -89,11 +90,30 @@ WORKERS = (
 )
 
 
+def configured_workers(clock_policy=None):
+    """One supervisor owns either the legacy pair or the bound UTC recorder."""
+    if clock_policy is None:
+        return WORKERS
+    from datetime import datetime, timezone
+    from backend.data_engine.clock_policy import ClockPolicy
+    path = Path(clock_policy).resolve(strict=True)
+    policy = ClockPolicy.load(path)
+    policy.check_active(datetime.now(timezone.utc))
+    return (WorkerSpec(name='utc_forward_feed', module='backend.runtime.capture_forward_feed',
+        arguments=('--clock-policy', str(path), '--continuous')),)
+
+
 class MarketDataSupervisor:
 
     def __init__(
-        self
+        self,
+        workers=None
     ):
+        selected = WORKERS if workers is None else tuple(workers)
+        if not selected or not all(isinstance(item, WorkerSpec) for item in selected):
+            raise ValueError('Supervisor requires named worker specifications.')
+        if len({item.name for item in selected}) != len(selected):
+            raise ValueError('Supervisor worker identities must be unique.')
 
         self.states = [
 
@@ -102,7 +122,7 @@ class MarketDataSupervisor:
             )
 
             for spec
-            in WORKERS
+            in selected
         ]
 
 
@@ -155,6 +175,7 @@ class MarketDataSupervisor:
 
             state.spec.module
         ]
+        command.extend(state.spec.arguments)
 
 
         process = (
@@ -582,6 +603,9 @@ def parse_args():
     )
 
 
+    parser.add_argument('--clock-policy',type=Path,
+        help='Use one server-bound forward UTC recorder instead of the legacy workers.')
+
     args = (
         parser.parse_args()
     )
@@ -612,6 +636,12 @@ def main():
         parse_args()
     )
 
+    try:
+        workers = configured_workers(args.clock_policy)
+    except (OSError, ValueError, RuntimeError):
+        print('Supervisor clock policy is unreadable, expired or incompatible.', flush=True)
+        return 2
+
 
     lock = (
         SingleInstanceLock(
@@ -634,7 +664,7 @@ def main():
     try:
 
         supervisor = (
-            MarketDataSupervisor()
+            MarketDataSupervisor(workers=workers)
         )
 
 
@@ -651,5 +681,4 @@ def main():
 
 if __name__ == "__main__":
 
-    main()
-    
+    raise SystemExit(main())
