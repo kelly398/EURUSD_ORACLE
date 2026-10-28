@@ -1,3 +1,4 @@
+
 """Milestone 18 isolated-source and spread review contract tests."""
 
 from dataclasses import replace
@@ -263,3 +264,172 @@ def test_heuristic_threshold_changes_alerts_not_denominators(tmp_path):
     )
     assert report_a["spread_exposure_by_reset"]["near_reset"]["alerts"] == 4
     assert report_b["spread_exposure_by_reset"]["near_reset"]["alerts"] == 0
+
+
+# Milestone 20: broker-label date-level, within-hour and seasonal attribution.
+def test_broker_date_exposure_keeps_partial_days(tmp_path):
+    report = assess(tmp_path, spread_alert_points=8, top_days=2)
+    days = report["broker_date_exposure"]
+    assert report["broker_date_count"] == 3
+    assert len(days) == 3
+    assert [x["broker_label_date"] for x in days] == [
+        "2026-01-16", "2026-01-19", "2026-06-10",
+    ]
+    friday, monday, summer = days
+    assert friday["season"] == "winter"
+    assert friday["broker_hour_00"] == {
+        "rows": 0, "alerts": 0, "alert_rate_percent": None,
+    }
+    assert friday["other_hours"] == {
+        "rows": 3, "alerts": 3, "alert_rate_percent": 100.0,
+    }
+    assert monday["broker_hour_00"]["rows"] == 3
+    assert summer["broker_hour_00"]["rows"] == 3
+    assert [d["broker_label_date"] for d in report["top_broker_hour00_days"]] == [
+        "2026-01-19", "2026-06-10",
+    ]
+    assert report["broker_date_coverage_certified"] is False
+    assert report["spread_concentration_stability_established"] is False
+
+
+def test_hour00_minute_buckets_are_complete_and_grounded(tmp_path):
+    report = assess(tmp_path, spread_alert_points=8)
+    bins = report["broker_hour00_by_minute"]
+    assert len(bins) == 12
+    assert [item["minute"] for item in bins] == list(range(0, 60, 5))
+    assert [item["rows"] for item in bins[:4]] == [2, 2, 1, 1]
+    assert sum(item["rows"] for item in bins) == 6
+    assert sum(item["alerts"] for item in bins) == 6
+    assert bins[4]["alert_rate_percent"] is None
+    assert bins[0]["alert_rate_percent"] == 100.0
+
+
+def test_hour00_by_season_does_not_mix_clocks(tmp_path):
+    report = assess(tmp_path, spread_alert_points=8)
+    season = report["broker_hour_group_by_season"]
+    assert season["winter"]["broker_hour_00"]["rows"] == 3
+    assert season["winter"]["other_hours"]["rows"] == 3
+    assert season["summer"]["broker_hour_00"]["rows"] == 3
+    assert season["summer"]["other_hours"]["rows"] == 0
+    assert season["summer"]["other_hours"]["alert_rate_percent"] is None
+    for group in ("broker_hour_00", "other_hours"):
+        assert sum(season[s][group]["alerts"] for s in season) == (
+            report["spread_exposure_by_broker_hour_group"][
+                group if group == "broker_hour_00" else "other_broker_hours"
+            ]["alerts"]
+        )
+
+
+def test_outside_hour00_alert_examples_have_full_provenance(tmp_path):
+    report = assess(tmp_path, spread_alert_points=8, top_examples=2)
+    assert report["outside_broker_hour00_alert_count"] == 3
+    assert len(report["outside_broker_hour00_alert_examples"]) == 2
+    assert all(x["broker_label"].startswith("2026-01-16T23:")
+               for x in report["outside_broker_hour00_alert_examples"])
+    assert all(x["source_lineage_sha256"] and x["source_row_id"] is not None
+               for x in report["outside_broker_hour00_alert_examples"])
+    assert all(x["spread_points"] == 8
+               for x in report["outside_broker_hour00_alert_examples"])
+
+
+def test_outside_hour00_absence_when_threshold_exceeds_spread(tmp_path):
+    report = assess(tmp_path, spread_alert_points=9)
+    assert report["outside_broker_hour00_alert_count"] == 0
+    assert report["outside_broker_hour00_alert_examples"] == []
+    assert all(x["alerts"] == 0 for x in report["broker_hour00_by_minute"])
+    assert all(x["all_hours"]["alerts"] == 0
+               for x in report["broker_date_exposure"])
+
+
+@pytest.mark.parametrize("bad", [0, -1, 21, True, "8", 1.5])
+def test_invalid_top_days_fails_before_io(bad):
+    with pytest.raises(FeatureIntegrityError, match="top_days"):
+        assess_feature_integrity("x", (), "x", top_days=bad)
+
+
+def test_m20_cli_and_json_include_broker_date_evidence(tmp_path, capsys):
+    args = cli_args(tmp_path) + ["--spread-alert-points", "8", "--top-days", "2"]
+    assert run(args) == 0
+    output = capsys.readouterr().out
+    assert "BROKER-LABEL DATES OBSERVED: 3" in output
+    assert "SEASON winter hour00=3/3" in output
+    assert "BROKER HOUR00 MINUTE 00: 2/2" in output
+    assert "OUTSIDE BROKER HOUR00 ALERTS: 3" in output
+    assert "OUTSIDE HOUR00 REVIEW spread=8" in output
+    assert "NO FILES WRITTEN" in output
+    assert run(args + ["--json"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["broker_date_count"] == 3
+    assert len(data["top_broker_hour00_days"]) == 2
+    assert data["training_authorized"] is False
+    assert data["execution_authorized"] is False
+
+
+def test_two_non_midnight_alerts_with_distinct_source_rows(tmp_path):
+    """Two high Friday spreads survive provenance checks and attribution."""
+    from datetime import date, datetime, timedelta, timezone
+    from backend.models.historical_utc_reconstruction import (
+        LegacyM5Bar, reconstruct_historical_m5_bars,
+    )
+    from backend.models.test_audit_historical_utc_research_export import write
+    from backend.models.test_consolidate_historical_utc_research import (
+        one_export, project,
+    )
+    from backend.models.test_historical_utc_gap_evidence import (
+        summer_export_with_internal_gap,
+    )
+    from backend.models.consolidate_historical_utc_research import (
+        ResearchWindow, inspect_windows, publish_index,
+    )
+    from backend.models.register_historical_utc_seasons import (
+        build_registry, publish_registry,
+    )
+    from backend.models.audit_historical_utc_research_export import (
+        audit_research_export,
+    )
+
+    root = project(tmp_path)
+    friday = tmp_path / "friday_spread"
+    friday.mkdir()
+    start = datetime(2026, 1, 16, 23, 45, tzinfo=timezone.utc)
+    batch = reconstruct_historical_m5_bars([
+        LegacyM5Bar(
+            row_id=i + 1,
+            broker_label_time=start + timedelta(minutes=5 * i),
+            open=1.10, high=1.12, low=1.09, close=1.11,
+            tick_volume=100, spread_points=spread, real_volume=0,
+        )
+        for i, spread in enumerate((70, 8, 55))
+    ])
+    write(friday, [r.record() for r in batch.records],
+          batch.evidence_sha256, batch.mapping_implementation_sha256)
+    monday = one_export(tmp_path, "monday", datetime(
+        2026, 1, 19, tzinfo=timezone.utc), (4, 5, 6))
+    summer = summer_export_with_internal_gap(tmp_path)
+    winter_idx = publish_index(inspect_windows((
+        ResearchWindow(date(2026, 1, 12), date(2026, 1, 19), friday),
+        ResearchWindow(date(2026, 1, 19), date(2026, 1, 26), monday),
+    )), root)
+    summer_idx = publish_index(inspect_windows((ResearchWindow(
+        date(2026, 6, 8), date(2026, 6, 15), summer,
+    ),)), root)
+    indexes = (winter_idx, summer_idx)
+    registry = publish_registry(build_registry(indexes), root)
+    data = root / "data/research/historical_utc_v2"
+    data.mkdir()
+    for source in (friday, monday, summer):
+        lineage = audit_research_export(source).lineage_sha256
+        shutil.copytree(source, data / ("dataset_" + lineage))
+
+    report = assess_feature_integrity(
+        registry, indexes, data, spread_alert_points=50,
+    )
+    assert report["spread_alert_count"] == 2
+    assert report["outside_broker_hour00_alert_count"] == 2
+    assert [x["spread_points"] for x in report[
+        "outside_broker_hour00_alert_examples"]] == [70, 55]
+    assert [x["source_row_id"] for x in report[
+        "outside_broker_hour00_alert_examples"]] == [1, 3]
+    assert report["spread_exposure_by_broker_hour_group"][
+        "broker_hour_00"]["alerts"] == 0
+    assert report["broker_date_exposure"][0]["other_hours"]["alerts"] == 2

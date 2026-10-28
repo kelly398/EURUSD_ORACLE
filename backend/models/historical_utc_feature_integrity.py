@@ -1,4 +1,5 @@
-"""Milestone 18: read-only spread and rolling-boundary integrity review.
+
+"""Milestones 18-20: read-only spread and rolling-boundary integrity review.
 
 Reuses the Milestone 17 source-backed inventory and Milestone 07 indicator
 builder. Broker hours and UTC *candidate* hours are diagnostic labels only,
@@ -27,6 +28,7 @@ from backend.models.register_historical_utc_seasons import (
 )
 
 VERSION = "EURUSD_M5_RESEARCH_FEATURE_INTEGRITY_V1"
+# Keep the established assessment version for backward-compatible consumers.
 FIELDS = (
     "log_return_1",
     "sma_close_12",
@@ -46,6 +48,10 @@ class FeatureIntegrityError(RuntimeError):
     """Research evidence or indicator reset checks did not verify."""
 
 
+def _percent(value):
+    return "N/A" if value is None else f"{value}%"
+
+
 def _int_in_range(value, name, low, high):
     if type(value) is not int or not low <= value <= high:
         raise FeatureIntegrityError(f"{name} must be {low}..{high}.")
@@ -60,6 +66,7 @@ def assess_feature_integrity(
     spread_alert_points=50,
     top_examples=10,
     near_reset_bars=3,
+    top_days=8,
 ):
     """Inspect recomputed, source-verified features without writing outputs.
 
@@ -69,6 +76,7 @@ def assess_feature_integrity(
     _int_in_range(spread_alert_points, "spread_alert_points", 1, 100_000)
     _int_in_range(top_examples, "top_examples", 1, 25)
     _int_in_range(near_reset_bars, "near_reset_bars", 1, 100)
+    _int_in_range(top_days, "top_days", 1, 20)
     indexes = tuple(index_directories)
     root = Path(dataset_root)
 
@@ -120,6 +128,15 @@ def assess_feature_integrity(
     }
     leading_alerts = []
     reset_examples = []
+    # Milestone 20: per-broker-label date and hour-00 five-minute exposure.
+    # All counts are observations; missing trading time is NOT inferred.
+    date_exposure = {}
+    hour00_minute_exposure = {minute: [0, 0] for minute in range(0, 60, 5)}
+    hour00_season_exposure = {
+        season: {"broker_hour_00": [0, 0], "other_hours": [0, 0]}
+        for season in ("winter", "summer")
+    }
+    outside_hour_alerts = []
 
     try:
         for (index_digest, parent), reference in zip(parents, parent_evidence):
@@ -238,6 +255,28 @@ def assess_feature_integrity(
                     raise FeatureIntegrityError("Invalid seasonal offset.")
                 season_exposure[season][0] += 1
                 season_exposure[season][1] += int(is_alert)
+                date_key = broker_time.date().isoformat()
+                daily = date_exposure.setdefault(date_key, {
+                    "season": season,
+                    "all_hours": [0, 0],
+                    "broker_hour_00": [0, 0],
+                    "other_hours": [0, 0],
+                })
+                if daily["season"] != season:
+                    raise FeatureIntegrityError(
+                        "Broker date crossed inconsistent seasonal offsets."
+                    )
+                day_bucket = "broker_hour_00" if at_broker_00 else "other_hours"
+                for pair in (daily["all_hours"], daily[day_bucket],
+                             hour00_season_exposure[season][day_bucket]):
+                    pair[0] += 1
+                    pair[1] += int(is_alert)
+                if at_broker_00:
+                    if broker_time.minute not in hour00_minute_exposure:
+                        raise FeatureIntegrityError("Invalid broker M5 minute label.")
+                    pair = hour00_minute_exposure[broker_time.minute]
+                    pair[0] += 1
+                    pair[1] += int(is_alert)
                 for kind, hour in (
                     ("broker_label", broker_time.hour),
                     ("candidate_utc", current_time.hour),
@@ -260,6 +299,14 @@ def assess_feature_integrity(
                         "near_reset": near_reset,
                     }
                     leading_alerts.append(candidate)
+                    if not at_broker_00:
+                        outside_hour_alerts.append(candidate)
+                        outside_hour_alerts.sort(key=lambda x: (
+                            -x["spread_points"], x["broker_label"],
+                            x["source_row_id"],
+                        ))
+                        if len(outside_hour_alerts) > top_examples:
+                            outside_hour_alerts.pop()
                     # Bounded selection of the largest, deterministic on ties.
                     leading_alerts.sort(key=lambda x: (
                         -x["spread_points"],
@@ -307,6 +354,37 @@ def assess_feature_integrity(
     ):
         raise FeatureIntegrityError("Spread exposure denominators disagree.")
 
+    # Independent reconciliation with Milestone 19 group exposures.
+    if (sum(v["all_hours"][0] for v in date_exposure.values()) != total_rows
+            or sum(v["all_hours"][1] for v in date_exposure.values()) != alert_count
+            or any(v["all_hours"][i] != (
+                    v["broker_hour_00"][i] + v["other_hours"][i])
+                   for v in date_exposure.values() for i in (0, 1))
+            or any(sum(v[group][i] for v in date_exposure.values()
+                       if v["season"] == season)
+                   != hour00_season_exposure[season][group][i]
+                   for season in hour00_season_exposure
+                   for group in ("broker_hour_00", "other_hours")
+                   for i in (0, 1))
+            or any(sum(v[group][i] for v in date_exposure.values()) !=
+                   sum(exposure[key][i] for key in exposure
+                       if key.startswith("broker_00" if group == "broker_hour_00"
+                                         else "other_hours"))
+                   for group in ("broker_hour_00", "other_hours")
+                   for i in (0, 1))
+            or any(sum(pair[i] for pair in hour00_minute_exposure.values())
+                   != sum(v["broker_hour_00"][i]
+                          for v in date_exposure.values())
+                   for i in (0, 1))
+            or len(outside_hour_alerts) != min(
+                sum(v["other_hours"][1] for v in date_exposure.values()),
+                top_examples,
+            )
+            or any(example["spread_points"] < spread_alert_points
+                   or datetime.fromisoformat(example["broker_label"]).hour == 0
+                   for example in outside_hour_alerts)):
+        raise FeatureIntegrityError("Broker-date spread attribution disagrees.")
+
     def rate(pair):
         rows, alerts = pair
         return {
@@ -329,6 +407,25 @@ def assess_feature_integrity(
         for i in (0, 1)
     ]
     other = [total_rows - broker_00[0], alert_count - broker_00[1]]
+    broker_dates = [
+        {
+            "broker_label_date": date_key,
+            "season": item["season"],
+            "all_hours": rate(item["all_hours"]),
+            "broker_hour_00": rate(item["broker_hour_00"]),
+            "other_hours": rate(item["other_hours"]),
+        }
+        for date_key, item in sorted(date_exposure.items())
+    ]
+    # Ranking by count, with explicit exposure and rate to show partial days.
+    top_hour00_days = sorted(
+        (day for day in broker_dates if day["broker_hour_00"]["rows"] > 0),
+        key=lambda day: (
+            -day["broker_hour_00"]["alerts"],
+            -day["broker_hour_00"]["alert_rate_percent"],
+            day["broker_label_date"],
+        ),
+    )[:top_days]
     by_hour = {
         name: [
             {
@@ -377,6 +474,22 @@ def assess_feature_integrity(
         "spread_alerts_by_season": alerts_by_season,
         "spread_alerts_by_hour": by_hour,
         "largest_spread_alerts": leading_alerts,
+        # Milestone 20 additive diagnostics. All dates/hours are broker labels.
+        "broker_date_exposure": broker_dates,
+        "broker_date_count": len(broker_dates),
+        "top_broker_hour00_days": top_hour00_days,
+        "broker_hour00_by_minute": [
+            {"minute": minute, **rate(pair)}
+            for minute, pair in sorted(hour00_minute_exposure.items())
+        ],
+        "broker_hour_group_by_season": {
+            season: {group: rate(pair) for group, pair in bins.items()}
+            for season, bins in hour00_season_exposure.items()
+        },
+        "outside_broker_hour00_alert_count": other[1],
+        "outside_broker_hour00_alert_examples": outside_hour_alerts,
+        "broker_date_coverage_certified": False,
+        "spread_concentration_stability_established": False,
         "reset_examples": reset_examples,
         "historical_event_utc_certified": False,
         "first_available_at_verified": False,
@@ -398,6 +511,7 @@ def run(argv=None):
     parser.add_argument("--spread-alert-points", type=int, default=50)
     parser.add_argument("--top-examples", type=int, default=10)
     parser.add_argument("--near-reset-bars", type=int, default=3)
+    parser.add_argument("--top-days", type=int, default=8)
     parser.add_argument("--research-only", required=True, action="store_true")
     parser.add_argument("--json", action="store_true", help="Print diagnostics only")
     args = parser.parse_args(argv)
@@ -407,6 +521,7 @@ def run(argv=None):
             spread_alert_points=args.spread_alert_points,
             top_examples=args.top_examples,
             near_reset_bars=args.near_reset_bars,
+            top_days=args.top_days,
         )
     except FeatureIntegrityError as exc:
         print(f"FEATURE INTEGRITY BLOCKED: {exc}")
@@ -434,6 +549,30 @@ def run(argv=None):
         for label, values in report["spread_exposure_joint_reset_and_hour"].items():
             print(f"JOINT EXPOSURE {label}: {values['alerts']}/{values['rows']} "
                   f"({values['alert_rate_percent']}%)")
+        print(f"BROKER-LABEL DATES OBSERVED: {report['broker_date_count']}")
+        for season, groups in report["broker_hour_group_by_season"].items():
+            h00 = groups["broker_hour_00"]
+            other = groups["other_hours"]
+            print(f"SEASON {season} hour00={h00['alerts']}/{h00['rows']} "
+                  f"({_percent(h00['alert_rate_percent'])}) | "
+                  f"other={other['alerts']}/{other['rows']} "
+                  f"({_percent(other['alert_rate_percent'])})")
+        for day in report["top_broker_hour00_days"]:
+            h00 = day["broker_hour_00"]
+            print(f"BROKER DAY {day['broker_label_date']} [{day['season']}] "
+                  f"hour00={h00['alerts']}/{h00['rows']} "
+                  f"({_percent(h00['alert_rate_percent'])})")
+        for item in report["broker_hour00_by_minute"]:
+            print(f"BROKER HOUR00 MINUTE {item['minute']:02d}: "
+                  f"{item['alerts']}/{item['rows']} "
+                  f"({_percent(item['alert_rate_percent'])})")
+        print("OUTSIDE BROKER HOUR00 ALERTS: "
+              f"{report['outside_broker_hour00_alert_count']}")
+        for item in report["outside_broker_hour00_alert_examples"]:
+            print(f"OUTSIDE HOUR00 REVIEW spread={item['spread_points']} "
+                  f"broker_points | broker={item['broker_label']} | "
+                  f"UTC_candidate={item['candidate_utc']} | "
+                  f"source_row_id={item['source_row_id']}")
         print(f"WINTER ALERTS: {report['spread_alerts_by_season']['winter']} | "
               f"SUMMER ALERTS: {report['spread_alerts_by_season']['summer']}")
         for example in report["largest_spread_alerts"]:
