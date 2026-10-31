@@ -1,3 +1,4 @@
+
 """MT5 market-data adapter with explicit transport and UTC-clock quarantine.
 
 The default path never guesses broker offsets. An explicitly supplied, server-
@@ -6,6 +7,8 @@ That path preserves original fields and cannot enter legacy ingestion storage.
 """
 
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
+from copy import deepcopy
 import os
 
 import MetaTrader5 as mt5
@@ -20,6 +23,10 @@ MT5_INITIALIZE_TIMEOUT_MS = 60000
 
 class MT5TimestampIntegrityError(RuntimeError):
     """Raw MT5 timestamps cannot safely be treated as current UTC instants."""
+
+
+class MT5BrokerProfileMismatch(RuntimeError):
+    """The selected local MT5 profile does not match the observed terminal."""
 
 
 def _utc_now():
@@ -111,23 +118,117 @@ class MT5Provider(MarketDataProvider):
         "D1": mt5.TIMEFRAME_D1,
     }
 
-    def __init__(self, *, clock_policy=None):
+    def __init__(self, *, clock_policy=None, broker_profile=None):
+        # Keep the original HFM wall-clock epoch path separate from the
+        # unverified multi-broker Python-API timestamp contract.
+        if clock_policy is not None and broker_profile is not None:
+            raise ValueError("Clock-policy and multi-broker profile modes must not be combined.")
+        if broker_profile is not None:
+            from backend.runtime.stage7_universal_mt5_adapter import validate_profile
+            validate_profile(broker_profile)
+            broker_profile = deepcopy(broker_profile)
         if clock_policy is not None:
             from backend.data_engine.clock_policy import ClockPolicy
             if not isinstance(clock_policy, ClockPolicy):
                 raise TypeError("MT5 clock policy must be a validated ClockPolicy.")
             clock_policy = ClockPolicy.model_validate(clock_policy.model_dump())
         self.clock_policy = clock_policy
+        self.broker_profile = broker_profile
         self.connected = False
+
+    def _require_profile_binding(self, symbol=None):
+        """Check the selected MT5 feed without retaining account identifiers.
+
+        The profile's ``account_ref`` is a *local alias*, not an authenticated
+        MT5 account number. This method checks server/company, DEMO/LIVE,
+        accounting mode and instrument properties, not independent G01 proof.
+        All checks are local and read-only. No account switching or symbol_select.
+        """
+        profile = self.broker_profile
+        if profile is None:
+            return
+        if not self.connected:
+            raise MT5BrokerProfileMismatch("Selected MT5 provider is disconnected.")
+        try:
+            terminal = mt5.terminal_info()
+            account = mt5.account_info()
+            if terminal is None or terminal.connected is not True or account is None:
+                raise MT5BrokerProfileMismatch("Terminal/account metadata unavailable.")
+            if (account.company != profile['broker_name']
+                    or account.server != profile['server_name']):
+                raise MT5BrokerProfileMismatch("Broker/company or server differs from profile.")
+
+            mode = account.trade_mode
+            margin = account.margin_mode
+            if type(mode) is not int or type(margin) is not int:
+                raise MT5BrokerProfileMismatch("Account mode is not a valid MT5 integer.")
+            trade_modes = {0: 'DEMO', 2: 'LIVE'}
+            margin_modes = {0: 'NETTING', 1: 'EXCHANGE', 2: 'HEDGING'}
+            if (trade_modes.get(mode) != profile['environment']
+                    or margin_modes.get(margin) != profile['account_mode']):
+                raise MT5BrokerProfileMismatch("Account environment or margin mode differs.")
+
+            expected = profile['instrument']
+            wanted = expected['broker_symbol']
+            if symbol is not None and symbol != wanted:
+                raise MT5BrokerProfileMismatch("Requested symbol differs from selected MT5 feed.")
+            spec = mt5.symbol_info(wanted)
+            if spec is None:
+                raise MT5BrokerProfileMismatch("Selected symbol metadata is unavailable.")
+            digits = spec.digits
+            if type(digits) is not int or digits != expected['digits']:
+                raise MT5BrokerProfileMismatch("Broker symbol precision differs.")
+
+            def measured(value, field):
+                if value is None or isinstance(value, bool):
+                    raise MT5BrokerProfileMismatch("Invalid symbol measurement: " + field)
+                try:
+                    number = Decimal(str(value))
+                except (InvalidOperation, ValueError, TypeError, OverflowError):
+                    raise MT5BrokerProfileMismatch("Invalid symbol measurement: " + field) from None
+                if not number.is_finite() or number <= 0:
+                    raise MT5BrokerProfileMismatch("Nonpositive symbol measurement: " + field)
+                return number
+
+            point = measured(spec.point, 'point')
+            contract = measured(spec.trade_contract_size, 'trade_contract_size')
+            if (point != Decimal(1).scaleb(-digits)
+                    or (expected['point'] is not None
+                        and point != measured(expected['point'], 'profile.point'))
+                    or contract != measured(expected['contract_size'], 'profile.contract_size')):
+                raise MT5BrokerProfileMismatch("Point or contract size differs from profile.")
+            if (spec.currency_margin != expected['margin_currency']
+                    or spec.currency_profit != expected['profit_currency']):
+                raise MT5BrokerProfileMismatch("Symbol currency differs from profile.")
+
+            spread = spec.spread_float
+            chart = spec.chart_mode
+            trade = spec.trade_mode
+            calc = spec.trade_calc_mode
+            if (type(spread) is not bool or type(chart) is not int
+                    or type(trade) is not int or type(calc) is not int):
+                raise MT5BrokerProfileMismatch("Symbol capabilities have invalid types.")
+            if (('FLOATING' if spread else 'FIXED') != expected['spread_mode']
+                    or {0: 'BID', 1: 'LAST'}.get(chart) != expected['chart_price']
+                    or {0: 'DISABLED', 1: 'LONG_ONLY', 2: 'SHORT_ONLY',
+                        3: 'CLOSE_ONLY', 4: 'FULL'}.get(trade) != expected['trade_mode']
+                    or {0: 'FOREX', 1: 'FOREX_NO_LEVERAGE'}.get(calc)
+                        != expected['calculation_mode']):
+                raise MT5BrokerProfileMismatch("Symbol capabilities differ from profile.")
+        except MT5BrokerProfileMismatch:
+            raise
+        except (AttributeError, TypeError, ValueError, OverflowError) as exc:
+            raise MT5BrokerProfileMismatch("Incomplete selected terminal or symbol metadata.") from exc
 
     def is_healthy(self):
         if not self.connected:
             return False
 
         terminal = mt5.terminal_info()
-        return bool(
-            terminal is not None and terminal.connected
-        )
+        healthy = bool(terminal is not None and terminal.connected)
+        if healthy and self.broker_profile is not None:
+            self._require_profile_binding()
+        return healthy
 
     def connect(self):
         if self.is_healthy():
@@ -163,6 +264,11 @@ class MT5Provider(MarketDataProvider):
 
             if terminal is not None and terminal.connected:
                 self.connected = True
+                try:
+                    self._require_profile_binding()
+                except MT5BrokerProfileMismatch:
+                    self.disconnect()
+                    raise
                 return True
 
             mt5.shutdown()
@@ -232,6 +338,7 @@ class MT5Provider(MarketDataProvider):
     def get_price(self, symbol):
         if not self.connected:
             raise RuntimeError("MT5 not connected")
+        self._require_profile_binding(symbol)
 
         tick = mt5.symbol_info_tick(symbol)
 
@@ -264,6 +371,7 @@ class MT5Provider(MarketDataProvider):
     ):
         if not self.connected:
             raise RuntimeError("MT5 not connected")
+        self._require_profile_binding(symbol)
 
         start, end = _utc_range(date_from, date_to)
 
@@ -307,6 +415,7 @@ class MT5Provider(MarketDataProvider):
     ):
         if not self.connected:
             raise RuntimeError("MT5 not connected")
+        self._require_profile_binding(symbol)
 
         mt5_timeframe = self.TIMEFRAMES.get(timeframe)
 
