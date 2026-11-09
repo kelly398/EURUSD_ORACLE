@@ -10,6 +10,8 @@ from backend.database.models import (
     Tick
 )
 
+from backend.data_engine.feed_identity import require_feed_id
+
 from backend.market_state.schemas import (
     TickSample
 )
@@ -36,8 +38,26 @@ class TickRepository:
             ask=row.ask,
 
             spread_pips=
-                row.spread_pips
+                row.spread_pips,
+
+            feed_id=row.feed_id,
         )
+
+
+    def __init__(self, feed_id=None):
+
+        if feed_id is not None:
+            require_feed_id(feed_id)
+
+        self.feed_id = feed_id
+
+
+    def _feed_filter(self):
+
+        if self.feed_id is None:
+            return Tick.feed_id.is_(None)
+
+        return Tick.feed_id == self.feed_id
 
 
     def get_between(
@@ -75,7 +95,9 @@ class TickRepository:
                     >= start,
 
                     Tick.timestamp
-                    < end
+                    < end,
+
+                    self._feed_filter()
                 )
 
                 .order_by(
@@ -111,4 +133,3 @@ class TickRepository:
         finally:
 
             session.close()
-            

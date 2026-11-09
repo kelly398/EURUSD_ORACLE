@@ -10,6 +10,8 @@ from backend.database.models import (
     BrokerCandle
 )
 
+from backend.data_engine.feed_identity import require_feed_id
+
 from backend.market_state.schemas import (
     CandleBar
 )
@@ -19,10 +21,22 @@ class CandleRepository:
 
     def __init__(
         self,
-        source="MT5"
+        source="MT5",
+        feed_id=None,
     ):
 
         self.source = source
+        if feed_id is not None:
+            require_feed_id(feed_id)
+        self.feed_id = feed_id
+
+
+    def _feed_filter(self):
+
+        if self.feed_id is None:
+            return BrokerCandle.feed_id.is_(None)
+
+        return BrokerCandle.feed_id == self.feed_id
 
 
     def _to_schema(
@@ -52,7 +66,9 @@ class CandleRepository:
 
             real_volume=row.real_volume,
 
-            source=row.source
+            source=row.source,
+
+            feed_id=row.feed_id,
         )
 
 
@@ -94,7 +110,9 @@ class CandleRepository:
                     == self.source,
 
                     BrokerCandle.is_complete
-                    .is_(True)
+                    .is_(True),
+
+                    self._feed_filter()
                 )
 
                 .order_by(
@@ -191,7 +209,9 @@ class CandleRepository:
                     .is_(True),
 
                     BrokerCandle.timestamp
-                    <= latest_timestamp
+                    <= latest_timestamp,
+
+                    self._feed_filter()
                 )
 
                 .order_by(
@@ -277,7 +297,9 @@ class CandleRepository:
                     >= start,
 
                     BrokerCandle.timestamp
-                    < end
+                    < end,
+
+                    self._feed_filter()
                 )
 
                 .order_by(
@@ -311,4 +333,3 @@ class CandleRepository:
         finally:
 
             session.close()
-            

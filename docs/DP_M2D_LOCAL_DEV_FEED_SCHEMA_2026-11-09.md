@@ -45,7 +45,8 @@ oracle_env/bin/python -m backend.database.feed_schema_migration \
   to connect to that database.
 - `eurusd_oracle_dp_m2b_lab` remains empty after the rollback-only rehearsal.
 - Focused DP-M2 regression: 150 passed on Linux.
-- Working tree remains uncommitted pending the required Windows regression.
+- Schema milestone committed as `bb9ca49` after focused tests; Windows
+  regression remains outstanding for milestone acceptance.
 
 ## Remaining work
 
@@ -55,7 +56,8 @@ oracle_env/bin/python -m backend.database.feed_schema_migration \
    disposable clone of the archive; never use the archive database itself.
 3. Coordinate writers, readers, and partial indexes before any candle
    uniqueness cutover. Keep all feed-labelled writes blocked until then.
-4. Run Windows compilation and Stage 7/11 regression before committing.
+4. Run Windows compilation and Stage 7/11 regression before marking DP-M2
+   accepted.
 
 Independent evidence gates remain 0/11, source-family admissions 0/13, and
 `FINAL=HOLD`.

@@ -15,12 +15,15 @@ rehearsal against synthetic temporary tables. Its final proposed phase checks
 the replacement indexes under a bounded table lock, refuses preexisting
 feed-labeled rows, then proposes dropping the old candle uniqueness constraint.
 That phase remains unapplied. DP-M2C.1 prepares the existing candle
-writer to reject feed-labeled rows before database sessions are opened. The
-local uncommitted continuation adds fail-closed guards to the tick batch and
-historical backfill writers, and removes the backfill's dependency on the
-legacy named candle constraint. DP-M2D.1 adds nullable feed columns, a feed
+writer to reject feed-labeled rows before database sessions are opened.
+Commit `95b742a` adds fail-closed guards to the tick batch and historical
+backfill writers and removes the backfill's dependency on the legacy named
+candle constraint. Commit `bb9ca49` adds nullable feed columns, a feed
 registry and partial indexes to the ORM, then applies an explicit guarded
 bootstrap migration only to the empty Linux development database.
+DP-M2D.2 scopes repository reads and cursors to either an explicitly selected
+feed or the `feed_id IS NULL` legacy partition; context and quality-engine
+selection are still pending.
 
 The original create_tick_fingerprint() function is preserved.
 
@@ -107,18 +110,19 @@ Legacy data must not be silently relabeled as authenticated HFM data.
 ## Acceptance conditions
 
 DP-M2A requires Windows compilation, focused tests, preservation of
-legacy fingerprint behavior and successful Stage 7/11 regression. The focused
-DP-M2 regression passed 150 tests on Linux. The ignored historical reports
-have been recovered under `logs/`; the earlier broad Stage 7/11 run has not
-been repeated since. The pinned historical policy remains unchanged because
-this checkout has LF bytes while the recovered original has the expected CRLF
-hash. Windows acceptance remains pending.
-
-Do not commit before reviewing the Windows results.
+legacy fingerprint behavior and successful Stage 7/11 regression. The
+combined DP-M2 focused regression passed 156 tests on Linux, including six
+synthetic feed-isolation tests. Two broader tests could not be collected
+because native Linux lacks the Windows-only `MetaTrader5` package. The ignored
+historical reports have been recovered under `logs/`; the earlier broad Stage
+7/11 run has not been repeated since. The pinned historical policy remains
+unchanged because this checkout has LF bytes while the recovered original has
+the expected CRLF hash. Windows acceptance remains pending.
 
 DP-M2 overall remains incomplete until database, writer, reader and
 quality integration have been verified.
 
-No collector, broker connection, migration or orders are authorized.
+No archive/production migration, collector, broker connection or orders are
+authorized.
 
 FINAL=HOLD.

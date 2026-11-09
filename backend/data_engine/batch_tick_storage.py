@@ -12,6 +12,8 @@ from backend.database.models import (
     Tick
 )
 
+from backend.data_engine.feed_identity import require_feed_id
+
 
 class BatchTickStorage:
 
@@ -38,8 +40,13 @@ class BatchTickStorage:
 
     def get_latest_time_msc(
         self,
-        symbol
+        symbol,
+        *,
+        feed_id=None,
     ):
+
+        if feed_id is not None:
+            require_feed_id(feed_id)
 
         session = SessionLocal()
 
@@ -52,7 +59,12 @@ class BatchTickStorage:
                     )
                 )
                 .filter(
-                    Tick.symbol == symbol
+                    Tick.symbol == symbol,
+                    (
+                        Tick.feed_id.is_(None)
+                        if feed_id is None
+                        else Tick.feed_id == feed_id
+                    ),
                 )
                 .scalar()
             )

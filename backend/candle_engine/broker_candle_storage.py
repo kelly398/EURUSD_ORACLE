@@ -13,14 +13,21 @@ from backend.database.models import (
     BrokerCandle
 )
 
+from backend.data_engine.feed_identity import require_feed_id
+
 
 class BrokerCandleStorage:
 
     def get_latest_timestamp(
         self,
         symbol,
-        timeframe
+        timeframe,
+        *,
+        feed_id=None,
     ):
+
+        if feed_id is not None:
+            require_feed_id(feed_id)
 
         session = SessionLocal()
 
@@ -40,7 +47,13 @@ class BrokerCandleStorage:
                     == timeframe,
 
                     BrokerCandle.source
-                    == "MT5"
+                    == "MT5",
+
+                    (
+                        BrokerCandle.feed_id.is_(None)
+                        if feed_id is None
+                        else BrokerCandle.feed_id == feed_id
+                    )
                 )
                 .scalar()
             )

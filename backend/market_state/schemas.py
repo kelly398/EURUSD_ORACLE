@@ -95,6 +95,8 @@ class CandleBar(BaseModel):
 
     source: str
 
+    feed_id: Optional[str] = None
+
 
     @model_validator(
         mode="after"
@@ -133,6 +135,8 @@ class TickSample(BaseModel):
     )
 
     symbol: str
+
+    feed_id: Optional[str] = None
 
     timestamp: datetime
 
