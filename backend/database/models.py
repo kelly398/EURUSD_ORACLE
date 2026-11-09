@@ -3,19 +3,63 @@ from sqlalchemy import (
     Integer,
     BigInteger,
     String,
+    CHAR,
     Float,
     Date,
     DateTime,
     Boolean,
     UniqueConstraint,
     Index,
-    func
+    ForeignKey,
+    CheckConstraint,
+    func,
+    text,
 )
 
 from sqlalchemy.orm import declarative_base
 
 
 Base = declarative_base()
+
+
+class MT5FeedRegistry(Base):
+
+    __tablename__ = "oracle_mt5_feed_registry"
+
+    __table_args__ = (
+        CheckConstraint(
+            "feed_id = 'mt5_eurusd_v1_' || identity_sha256 "
+            "AND identity_sha256 ~ '^[0-9a-f]{64}$'",
+            name="ck_oracle_feed_identity",
+        ).ddl_if(dialect="postgresql"),
+    )
+
+    feed_id = Column(
+        String(78),
+        primary_key=True,
+    )
+
+    profile_id = Column(
+        String(64),
+        nullable=False,
+    )
+
+    capture_epoch = Column(
+        String(64),
+        nullable=False,
+    )
+
+    identity_sha256 = Column(
+        CHAR(64),
+        nullable=False,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
 
 class Tick(Base):
 
@@ -32,6 +76,14 @@ class Tick(Base):
             "timestamp",
             "source_time_msc"
         ),
+        Index(
+            "ix_ticks_feed_timestamp_msc_v2",
+            "feed_id",
+            "timestamp",
+            "source_time_msc",
+            postgresql_where=text("feed_id IS NOT NULL"),
+            sqlite_where=text("feed_id IS NOT NULL"),
+        ),
     )
 
     id = Column(
@@ -44,6 +96,16 @@ class Tick(Base):
         String,
         nullable=False,
         index=True
+    )
+
+    feed_id = Column(
+        String(78),
+        ForeignKey(
+            "oracle_mt5_feed_registry.feed_id",
+            name="fk_ticks_feed_registry",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
     )
 
     timestamp = Column(
@@ -205,6 +267,34 @@ class BrokerCandle(Base):
             "source",
             "timestamp"
         ),
+        Index(
+            "ix_broker_candles_feed_time_v2",
+            "feed_id",
+            "timeframe",
+            "timestamp",
+            postgresql_where=text("feed_id IS NOT NULL"),
+            sqlite_where=text("feed_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_broker_candle_feed_v2",
+            "feed_id",
+            "symbol",
+            "timeframe",
+            "timestamp",
+            unique=True,
+            postgresql_where=text("feed_id IS NOT NULL"),
+            sqlite_where=text("feed_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_broker_candle_legacy_null_v2",
+            "symbol",
+            "timeframe",
+            "timestamp",
+            "source",
+            unique=True,
+            postgresql_where=text("feed_id IS NULL"),
+            sqlite_where=text("feed_id IS NULL"),
+        ),
     )
 
     id = Column(
@@ -217,6 +307,16 @@ class BrokerCandle(Base):
         String,
         nullable=False,
         index=True
+    )
+
+    feed_id = Column(
+        String(78),
+        ForeignKey(
+            "oracle_mt5_feed_registry.feed_id",
+            name="fk_broker_candles_feed_registry",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
     )
 
     timeframe = Column(
@@ -771,4 +871,4 @@ class DataQualityEvent(Base):
         String,
         nullable=False
     )
-    
+

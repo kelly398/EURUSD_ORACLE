@@ -53,13 +53,26 @@
 
 ## Milestone DP-M2 — Feed identity and additive Postgres schema migration
 
-**Not yet implemented.** Design, dry-run and back up before any migration.
+**In progress.** The additive ORM contract and guarded empty-local-database
+bootstrap are implemented. The restored historical archive is not migrated.
 
 - Add a stable, validated `feed_id` (broker profile/server/epoch combination) to *new* ticks, candles, quality-event receipts, and research queries.
 - Design revised uniqueness and indexes without breaking the existing global fingerprint/`uq_broker_candle` constraints until the migration is validated on a database copy.
 - Choose new identity versioning rather than rewriting existing fingerprint bytes. Treat legacy rows as `LEGACY_FEED_UNKNOWN` unless independently evidenced; do not silently claim historical HFM provenance.
 - Test mixed-broker inserts, deduplication, latest-row cursors, query isolation and resumption on realistic-volume fixtures.
-- Provide an explicit rollback plan and perform no database changes without approval.
+- Provide an explicit rollback plan before any populated-database migration.
+  The local bootstrap is restricted to the empty `eurusd_oracle_local` database.
+
+### Local progress on `feature/utc-research-m01-m08` at `002cbcf`
+
+- DP-M2A defines a local feed identity and versioned tick fingerprint while preserving V1.
+- DP-M2B contains a source-model preflight, non-executing PostgreSQL DDL proposal, and a rollback-only rehearsal for synthetic temporary tables. The proposal separates nullable columns, concurrent partial-index creation, and a bounded legacy candle-constraint cutover that checks both replacement indexes and refuses existing feed-labeled rows. These do not verify or modify a real database.
+- DP-M2C.1 updates the existing candle writer to reject `feed_id` rows before opening a session. Local uncommitted changes apply the same guard to the tick batch writer and historical candle backfill; the backfill also removes its named `uq_broker_candle` conflict-target dependency.
+- DP-M2D.1 adds nullable feed IDs, registry foreign keys, and partial feed indexes to the ORM while preserving the existing `uq_tick_fingerprint` and `uq_broker_candle` constraints. A guarded idempotent local-only migration adds this schema to the empty `eurusd_oracle_local` database; it refuses other database names, remote hosts, superuser sessions, or populated tick/candle tables.
+- The Windows archive was restored separately as `eurusd_oracle_archive` (30,744,086 ticks and 75,528 broker candles). It remains on its original schema and was not connected to or modified by the DP-M2D migration. The rollback-only lab remains empty after rehearsal.
+- Legacy writers still reject feed-labelled writes; feed-aware readers are not active. Existing archive rows retain unknown feed provenance; the old candle constraint is not dropped; `FINAL=HOLD` remains.
+- Focused DP-M2 offline regression on Linux: 150 passed, including tick/candle writer compatibility, backfill guards, schema plan, migration guards, lab rehearsal contracts and feed-identity contracts. The local PostgreSQL migration was applied repeatedly and its strict catalog postflight verified the partial index definitions. Windows regression/acceptance remains pending before commit.
+- The transferred ignored historical reports are now available under `logs/`. The tracked HFM policy remains unmodified; the original Windows-byte copy is preserved in Downloads because this Linux checkout has a different raw line-ending hash. The earlier broad Stage 7/11 run has not been repeated after report recovery.
 
 ## Milestone DP-M3 — One MT5 owner and canonical ingestion/quality
 
