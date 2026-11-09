@@ -72,6 +72,16 @@ class BatchTickStorage:
             return 0
 
 
+        # The feed-aware database migration and readers are not active yet.
+        # Refuse these rows before opening a DB session.
+        if any("feed_id" in row for row in rows):
+
+            raise RuntimeError(
+                "Feed-labelled tick writes are blocked pending approved "
+                "database migration and feed-isolated readers."
+            )
+
+
         inserted = 0
 
         session = SessionLocal()

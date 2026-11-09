@@ -473,6 +473,16 @@ def insert_bars(
         return 0
 
 
+    # The feed-aware schema and readers are not active yet. Reject the whole
+    # batch before opening a transaction, including mixed legacy/feed batches.
+    if any("feed_id" in row for row in rows):
+
+        raise RuntimeError(
+            "Feed-labelled historical candle writes are blocked pending "
+            "approved database migration and feed-isolated readers."
+        )
+
+
     inserted = 0
 
 
@@ -491,10 +501,7 @@ def insert_bars(
                 batch
             )
 
-            .on_conflict_do_nothing(
-                constraint=
-                    "uq_broker_candle"
-            )
+            .on_conflict_do_nothing()
         )
 
 
