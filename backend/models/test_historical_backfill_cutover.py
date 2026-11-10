@@ -78,6 +78,7 @@ def test_empty_batch_does_not_open_transaction(monkeypatch, backfill_module):
     engine, _ = stub_engine(monkeypatch, backfill_module)
 
     assert backfill_module.insert_bars([]) == 0
+    assert backfill_module.insert_ticks([]) == 0
     engine.begin.assert_not_called()
 
 
@@ -178,6 +179,32 @@ def test_database_error_propagates(monkeypatch, backfill_module):
         backfill_module.insert_bars([candle()])
 
     assert engine.begin.call_count == 1
+
+
+@pytest.mark.parametrize("feed_id", [None, "mt5_eurusd_v1_" + "a" * 64])
+def test_feed_labelled_tick_batch_is_rejected_before_transaction(
+    monkeypatch, backfill_module, feed_id
+):
+    engine, connection = stub_engine(monkeypatch, backfill_module)
+
+    with pytest.raises(RuntimeError, match="Feed-labelled historical tick"):
+        backfill_module.insert_ticks([{"fingerprint": "a" * 64, "feed_id": feed_id}])
+
+    engine.begin.assert_not_called()
+    connection.execute.assert_not_called()
+
+
+def test_mixed_tick_batch_is_rejected_atomically(monkeypatch, backfill_module):
+    engine, connection = stub_engine(monkeypatch, backfill_module)
+
+    with pytest.raises(RuntimeError, match="Feed-labelled historical tick"):
+        backfill_module.insert_ticks([
+            {"fingerprint": "a" * 64},
+            {"fingerprint": "b" * 64, "feed_id": None},
+        ])
+
+    engine.begin.assert_not_called()
+    connection.execute.assert_not_called()
 
 
 def test_insert_ticks_keeps_legacy_fingerprint_conflict_target(

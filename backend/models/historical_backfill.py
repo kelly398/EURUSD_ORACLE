@@ -538,6 +538,16 @@ def insert_ticks(
         return 0
 
 
+    # Keep the tick writer aligned with the candle writer: callers cannot
+    # opt into feed-labelled rows until reader and cutover gates are approved.
+    if any("feed_id" in row for row in rows):
+
+        raise RuntimeError(
+            "Feed-labelled historical tick writes are blocked pending "
+            "approved database migration and feed-isolated readers."
+        )
+
+
     inserted = 0
 
 
