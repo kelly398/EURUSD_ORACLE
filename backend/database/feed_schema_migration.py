@@ -34,6 +34,7 @@ MIGRATION_SQL = (
     )""",
     "ALTER TABLE public.ticks ADD COLUMN IF NOT EXISTS feed_id VARCHAR(78) NULL",
     "ALTER TABLE public.broker_candles ADD COLUMN IF NOT EXISTS feed_id VARCHAR(78) NULL",
+    "ALTER TABLE public.data_quality_events ADD COLUMN IF NOT EXISTS feed_id VARCHAR(78) NULL",
     """DO $migration$
     BEGIN
         IF NOT EXISTS (
@@ -62,6 +63,23 @@ MIGRATION_SQL = (
     $migration$""",
     "ALTER TABLE public.ticks VALIDATE CONSTRAINT fk_ticks_feed_registry",
     "ALTER TABLE public.broker_candles VALIDATE CONSTRAINT fk_broker_candles_feed_registry",
+    """DO $migration$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conrelid = 'public.data_quality_events'::regclass
+              AND conname = 'fk_data_quality_events_feed_registry'
+        ) THEN
+            ALTER TABLE public.data_quality_events
+                ADD CONSTRAINT fk_data_quality_events_feed_registry
+                FOREIGN KEY (feed_id)
+                REFERENCES public.oracle_mt5_feed_registry (feed_id)
+                ON DELETE RESTRICT NOT VALID;
+        END IF;
+    END
+    $migration$""",
+    "ALTER TABLE public.data_quality_events VALIDATE CONSTRAINT fk_data_quality_events_feed_registry",
+    "CREATE INDEX IF NOT EXISTS ix_data_quality_events_feed_id ON public.data_quality_events (feed_id)",
     """CREATE INDEX IF NOT EXISTS ix_ticks_feed_timestamp_msc_v2
         ON public.ticks (feed_id, "timestamp", source_time_msc)
         WHERE feed_id IS NOT NULL""",
@@ -96,6 +114,9 @@ EXPECTED_INDEXES = {
         "uq_broker_candle_feed_v2": True,
         "uq_broker_candle_legacy_null_v2": True,
     },
+    "data_quality_events": {
+        "ix_data_quality_events_feed_id": False,
+    },
 }
 
 EXPECTED_INDEX_SHAPES = {
@@ -114,6 +135,9 @@ EXPECTED_INDEX_SHAPES = {
     "uq_broker_candle_legacy_null_v2": (
         "broker_candles", ["symbol", "timeframe", "timestamp", "source"],
         True, "feed_id is null",
+    ),
+    "ix_data_quality_events_feed_id": (
+        "data_quality_events", ["feed_id"], False, "",
     ),
 }
 
@@ -190,7 +214,7 @@ def _preflight(connection):
 
     inspector = inspect(connection)
     tables = set(inspector.get_table_names(schema="public"))
-    if not {"ticks", "broker_candles"}.issubset(tables):
+    if not {"ticks", "broker_candles", "data_quality_events"}.issubset(tables):
         raise FeedSchemaMigrationError(
             "Canonical ticks and broker_candles tables are required."
         )
@@ -247,6 +271,25 @@ def _postflight(connection):
             raise FeedSchemaMigrationError(
                 "Feed registry foreign key missing: " + table_name
             )
+
+    event_columns = {
+        column["name"]: column
+        for column in inspector.get_columns(
+            "data_quality_events", schema="public"
+        )
+    }
+    if "feed_id" not in event_columns or not event_columns["feed_id"]["nullable"]:
+        raise FeedSchemaMigrationError(
+            "Data quality feed provenance column missing or not nullable."
+        )
+    if "fk_data_quality_events_feed_registry" not in {
+        item.get("name") for item in inspector.get_foreign_keys(
+            "data_quality_events", schema="public"
+        )
+    }:
+        raise FeedSchemaMigrationError(
+            "Data quality feed registry foreign key missing."
+        )
 
     registry_columns = {
         column["name"]

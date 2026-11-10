@@ -50,6 +50,7 @@ from backend.market_state.session_engine import (
     SessionEngine,
     SessionEngineResult
 )
+from backend.data_engine.feed_identity import require_feed_id
 
 
 @dataclass(frozen=True)
@@ -87,7 +88,8 @@ class MarketStateEngine:
         symbol="EURUSD",
         timeframe="M5",
         timeframe_minutes=5,
-        candle_limit=200
+        candle_limit=200,
+        feed_id=None,
     ):
 
         self.symbol = symbol
@@ -101,6 +103,9 @@ class MarketStateEngine:
         self.candle_limit = (
             candle_limit
         )
+        if feed_id is not None:
+            require_feed_id(feed_id)
+        self.feed_id = feed_id
 
 
         # ==================================
@@ -117,7 +122,8 @@ class MarketStateEngine:
                 timeframe_minutes=
                     timeframe_minutes,
 
-                lookback_hours=6
+                lookback_hours=6,
+                feed_id=feed_id,
             )
         )
 
@@ -128,13 +134,14 @@ class MarketStateEngine:
 
         self.candle_repository = (
             CandleRepository(
-                source="MT5"
+                source="MT5",
+                feed_id=feed_id,
             )
         )
 
 
         self.tick_repository = (
-            TickRepository()
+            TickRepository(feed_id=feed_id)
         )
 
 
@@ -451,6 +458,9 @@ class MarketStateEngine:
                 symbol=
                     self.symbol,
 
+                feed_id=
+                    self.feed_id,
+
                 timeframe=
                     self.timeframe,
 
@@ -522,4 +532,4 @@ class MarketStateEngine:
             tick_count=
                 len(ticks)
         )
-        
+

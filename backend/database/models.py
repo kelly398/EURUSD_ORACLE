@@ -857,6 +857,17 @@ class DataQualityEvent(Base):
         nullable=True
     )
 
+    feed_id = Column(
+        String(78),
+        ForeignKey(
+            "oracle_mt5_feed_registry.feed_id",
+            name="fk_data_quality_events_feed_registry",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+        index=True,
+    )
+
     check_name = Column(
         String,
         nullable=False

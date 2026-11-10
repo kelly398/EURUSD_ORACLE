@@ -8,6 +8,7 @@ from pydantic import (
     Field,
     model_validator
 )
+from backend.data_engine.feed_identity import require_feed_id
 
 
 # ============================================================
@@ -170,7 +171,7 @@ class TickSample(BaseModel):
             )
 
         return self
-        
+
 
 # ============================================================
 # TREND STATE
@@ -264,6 +265,8 @@ class MarketStateSnapshot(BaseModel):
 
     symbol: str
 
+    feed_id: Optional[str] = None
+
     timeframe: str
 
     as_of: datetime
@@ -297,3 +300,9 @@ class MarketStateSnapshot(BaseModel):
     session: Optional[
         str
     ] = None
+
+    @model_validator(mode="after")
+    def validate_feed_identity(self):
+        if self.feed_id is not None:
+            require_feed_id(self.feed_id)
+        return self

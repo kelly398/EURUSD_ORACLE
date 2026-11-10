@@ -1,6 +1,8 @@
 """Feed-aware repository and cursor isolation using synthetic SQLite rows."""
 
 from datetime import datetime, timedelta, timezone
+import sys
+import types
 
 import pytest
 from sqlalchemy import create_engine
@@ -13,6 +15,7 @@ from backend.data_engine.feed_identity import FeedIdentityError
 from backend.database.models import (
     Base,
     BrokerCandle,
+    DataQualityEvent,
     MT5FeedRegistry,
     Tick,
 )
@@ -27,6 +30,14 @@ END = START + timedelta(minutes=10)
 
 @pytest.fixture
 def feed_db(monkeypatch):
+    mt5_stub = types.ModuleType("MetaTrader5")
+    for constant in (
+        "COPY_TICKS_ALL", "TIMEFRAME_M1", "TIMEFRAME_M5",
+        "TIMEFRAME_M15", "TIMEFRAME_M30", "TIMEFRAME_H1",
+        "TIMEFRAME_H4", "TIMEFRAME_D1",
+    ):
+        setattr(mt5_stub, constant, 1)
+    monkeypatch.setitem(sys.modules, "MetaTrader5", mt5_stub)
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -36,12 +47,15 @@ def feed_db(monkeypatch):
         MT5FeedRegistry.__table__,
         Tick.__table__,
         BrokerCandle.__table__,
+        DataQualityEvent.__table__,
     ]
     Base.metadata.create_all(engine, tables=tables)
     session_factory = sessionmaker(bind=engine)
 
     monkeypatch.setattr(tick_repository, "SessionLocal", session_factory)
     monkeypatch.setattr(candle_repository, "SessionLocal", session_factory)
+    from backend.data_quality import quality_engine
+    monkeypatch.setattr(quality_engine, "SessionLocal", session_factory)
     monkeypatch.setattr(batch_tick_storage, "SessionLocal", session_factory)
     monkeypatch.setattr(broker_candle_storage, "SessionLocal", session_factory)
 
@@ -167,6 +181,46 @@ def test_latest_tick_and_candle_cursors_are_feed_scoped(feed_db):
     assert feed_b_cursor.replace(tzinfo=timezone.utc) == (
         START + timedelta(minutes=2)
     )
+
+
+def test_quality_engine_availability_checks_are_feed_scoped(feed_db, monkeypatch):
+    from backend.data_quality.quality_engine import DataQualityEngine
+
+    class OfflineProvider:
+        def connect(self):
+            return False
+
+    engine = DataQualityEngine(feed_id=FEED_A)
+    engine.provider = OfflineProvider()
+    engine.event_storage.save = lambda **kwargs: None
+
+    report = engine.run()
+
+    assert report["feed_id"] == FEED_A
+    assert report["latest_tick"] == (START + timedelta(seconds=10)).replace(
+        tzinfo=None
+    )
+    assert report["latest_broker_candle"] == (
+        START + timedelta(minutes=1)
+    ).replace(tzinfo=None)
+
+
+def test_quality_engine_legacy_mode_excludes_feed_rows(feed_db):
+    from backend.data_quality.quality_engine import DataQualityEngine
+
+    class OfflineProvider:
+        def connect(self):
+            return False
+
+    engine = DataQualityEngine()
+    engine.provider = OfflineProvider()
+    engine.event_storage.save = lambda **kwargs: None
+
+    report = engine.run()
+
+    assert report["feed_id"] is None
+    assert report["latest_tick"] == START.replace(tzinfo=None)
+    assert report["latest_broker_candle"] == START.replace(tzinfo=None)
 
 
 @pytest.mark.parametrize("repository", [

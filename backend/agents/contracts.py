@@ -14,6 +14,7 @@ from pydantic import (
     Field,
     model_validator
 )
+from backend.data_engine.feed_identity import require_feed_id
 
 from backend.market_state.schemas import (
     CandleBar,
@@ -159,6 +160,8 @@ class AgentContext(BaseModel):
 
     symbol: str
 
+    feed_id: str | None = None
+
     timeframe: str
 
     as_of: datetime
@@ -288,6 +291,9 @@ class AgentContext(BaseModel):
     )
     def validate_context(self):
 
+        if self.feed_id is not None:
+            require_feed_id(self.feed_id)
+
         # ==================================
         # SYMBOL CONSISTENCY
         # ==================================
@@ -301,6 +307,11 @@ class AgentContext(BaseModel):
                 "AgentContext symbol "
                 "does not match "
                 "MarketStateSnapshot."
+            )
+
+        if self.market_state.feed_id != self.feed_id:
+            raise ValueError(
+                "AgentContext feed_id does not match MarketStateSnapshot."
             )
 
 
@@ -369,6 +380,11 @@ class AgentContext(BaseModel):
 
         for candle in self.candles:
 
+            if candle.feed_id != self.feed_id:
+                raise ValueError(
+                    "AgentContext contains mixed candle feed IDs."
+                )
+
             if (
                 candle.symbol
                 != self.symbol
@@ -433,6 +449,11 @@ class AgentContext(BaseModel):
         # ==================================
 
         for tick in self.ticks:
+
+            if tick.feed_id != self.feed_id:
+                raise ValueError(
+                    "AgentContext contains mixed tick feed IDs."
+                )
 
             if (
                 tick.symbol

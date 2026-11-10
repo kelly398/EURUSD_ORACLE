@@ -26,6 +26,7 @@ from backend.data_engine.mt5_provider import (
 from backend.data_quality.event_storage import (
     DataQualityEventStorage
 )
+from backend.data_engine.feed_identity import require_feed_id
 
 
 class DataQualityEngine:
@@ -35,7 +36,8 @@ class DataQualityEngine:
         symbol="EURUSD",
         timeframe="M5",
         timeframe_minutes=5,
-        lookback_hours=6
+        lookback_hours=6,
+        feed_id=None,
     ):
 
         self.symbol = symbol
@@ -48,6 +50,9 @@ class DataQualityEngine:
         self.lookback_hours = (
             lookback_hours
         )
+        if feed_id is not None:
+            require_feed_id(feed_id)
+        self.feed_id = feed_id
 
         self.event_storage = (
             DataQualityEventStorage()
@@ -86,7 +91,8 @@ class DataQualityEngine:
                 timeframe=self.timeframe,
                 check_name=check_name,
                 severity=severity,
-                message=message
+                message=message,
+                feed_id=self.feed_id,
             )
 
 
@@ -99,6 +105,9 @@ class DataQualityEngine:
 
             "timeframe":
                 self.timeframe,
+
+            "feed_id":
+                self.feed_id,
 
             "status":
                 "PASS",
@@ -143,7 +152,10 @@ class DataQualityEngine:
                 )
                 .filter(
                     Tick.symbol
-                    == self.symbol
+                    == self.symbol,
+                    Tick.feed_id.is_(None)
+                    if self.feed_id is None
+                    else Tick.feed_id == self.feed_id,
                 )
                 .scalar()
             )
@@ -160,7 +172,10 @@ class DataQualityEngine:
                     == self.symbol,
 
                     BrokerCandle.timeframe
-                    == self.timeframe
+                    == self.timeframe,
+                    BrokerCandle.feed_id.is_(None)
+                    if self.feed_id is None
+                    else BrokerCandle.feed_id == self.feed_id,
                 )
                 .scalar()
             )
@@ -427,7 +442,10 @@ class DataQualityEngine:
                     == self.timeframe,
 
                     BrokerCandle.timestamp
-                    >= window_start
+                    >= window_start,
+                    BrokerCandle.feed_id.is_(None)
+                    if self.feed_id is None
+                    else BrokerCandle.feed_id == self.feed_id
                 )
                 .order_by(
                     BrokerCandle.timestamp.asc()
@@ -608,7 +626,10 @@ class DataQualityEngine:
                             >= missing_start,
 
                             Tick.timestamp
-                            < current.timestamp
+                            < current.timestamp,
+                            Tick.feed_id.is_(None)
+                            if self.feed_id is None
+                            else Tick.feed_id == self.feed_id
                         )
                         .scalar()
                     )
@@ -692,4 +713,4 @@ class DataQualityEngine:
         finally:
 
             session.close()
-            
+

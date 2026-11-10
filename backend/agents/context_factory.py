@@ -38,6 +38,7 @@ from backend.macro.fed_rate_candidate_repository import (
 from backend.agents.fed_context_adapter import (
     quarantine_fed_context_candidates
 )
+from backend.data_engine.feed_identity import require_feed_id
 
 class AgentContextFactory:
 
@@ -52,7 +53,8 @@ class AgentContextFactory:
         ecb_rate_repository=None,
         economic_calendar_repository=None,
         fed_candidate_repository=None,
-        council_input_provider=None
+        council_input_provider=None,
+        feed_id=None,
     ):
 
         if candle_limit <= 0:
@@ -104,6 +106,9 @@ class AgentContextFactory:
         self.candle_limit = (
             candle_limit
         )
+        if feed_id is not None:
+            require_feed_id(feed_id)
+        self.feed_id = feed_id
 
         self.tick_lookback_minutes = (
             tick_lookback_minutes
@@ -135,13 +140,14 @@ class AgentContextFactory:
 
         self.candle_repository = (
             CandleRepository(
-                source="MT5"
+                source="MT5",
+                feed_id=feed_id,
             )
         )
 
 
         self.tick_repository = (
-            TickRepository()
+            TickRepository(feed_id=feed_id)
         )
 
 
@@ -320,6 +326,11 @@ class AgentContextFactory:
             unified_result.snapshot
         )
 
+        if snapshot.feed_id != self.feed_id:
+            raise ValueError(
+                "AgentContextFactory feed selection does not match market snapshot."
+            )
+
 
         anchor = (
             unified_result
@@ -437,6 +448,9 @@ class AgentContextFactory:
 
             symbol=
                 snapshot.symbol,
+
+            feed_id=
+                snapshot.feed_id,
 
             timeframe=
                 snapshot.timeframe,

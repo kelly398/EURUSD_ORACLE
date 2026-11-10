@@ -5,6 +5,7 @@ from backend.database.connection import (
 from backend.database.models import (
     DataQualityEvent
 )
+from backend.data_engine.feed_identity import require_feed_id
 
 
 class DataQualityEventStorage:
@@ -15,8 +16,12 @@ class DataQualityEventStorage:
         timeframe,
         check_name,
         severity,
-        message
+        message,
+        feed_id=None,
     ):
+
+        if feed_id is not None:
+            require_feed_id(feed_id)
 
         session = SessionLocal()
 
@@ -27,7 +32,8 @@ class DataQualityEventStorage:
                 timeframe=timeframe,
                 check_name=check_name,
                 severity=severity,
-                message=message
+                message=message,
+                feed_id=feed_id,
             )
 
             session.add(event)
@@ -46,4 +52,4 @@ class DataQualityEventStorage:
         finally:
 
             session.close()
-            
+
