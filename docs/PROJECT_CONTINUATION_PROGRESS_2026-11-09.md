@@ -6,12 +6,15 @@ This is the handoff note for the next development session. Read it together
 with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
 `docs/DP_M2D_FEED_SCOPED_READS_2026-11-09.md`, and
 `docs/DP_M2D_FEED_PROVENANCE_2026-11-09.md`, and
-`docs/DP_M2D_PROFILE_BOUND_CLOCK_2026-11-09.md`.
+`docs/DP_M2D_PROFILE_BOUND_CLOCK_2026-11-09.md`, and
+`docs/DP_M2D_FEED_REGISTRATION_2026-11-09.md`.
 
 ## Current position
 
 - Branch: `feature/utc-research-m01-m08`.
-- Latest implementation commit: `a30260c fix(data): bind quality clocks
+- Latest implementation commit: `8e3a253 feat(data): add guarded feed
+  registry registration`.
+- DP-M2D.4 implementation commit: `a30260c fix(data): bind quality clocks
   to selected feed`.
 - DP-M2D.3 implementation commit: `ba6ce30 feat(data): propagate feed
   provenance to council context`; migration status update: `a73b493`.
@@ -84,6 +87,21 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
   account-profile data in snapshots or Council contexts.
 - Details: `docs/DP_M2D_PROFILE_BOUND_CLOCK_2026-11-09.md`.
 
+### Feed registration — DP-M2D.5
+
+- Added `prepare_feed_registration` to derive the minimal registry row from a
+  validated profile and capture epoch. Preview reports omit account aliases
+  and explicitly keep authentication, admission, market writes, and trading
+  disabled.
+- Added `register_local_feed` for explicit local development registration.
+  It requires exact `eurusd_oracle_local` confirmation, validates the URL
+  before connecting, verifies current database and role, and inserts only a
+  registry row with bounded transaction timeouts.
+- Same-record registration is idempotent; conflicting registry rows are never
+  overwritten. Tests use synthetic SQLite data. The example profile was not
+  registered and no MT5 terminal was used.
+- Details: `docs/DP_M2D_FEED_REGISTRATION_2026-11-09.md`.
+
 ## Linux workstation and databases
 
 - PostgreSQL is installed and running locally on port `5432`.
@@ -125,6 +143,11 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
   subtests passed, with the same 4
   existing collection warnings. Synthetic profile/provider tests prove that
   missing or mismatched bindings fail closed; no terminal was contacted.
+- DP-M2D.5 focused suite, recorded in `8e3a253`: **201 passed**, 15
+  subtests passed, and 4 existing
+  pytest collection warnings. It covers preparation, minimal fields,
+  idempotency, collision refusal, and local-database guards. No real profile
+  was registered.
 - `git diff --check` passed for the latest code commit.
 - The Stage 8 point-in-time suite was also attempted; it fails at the known
   pinned HFM policy raw-byte SHA check caused by this checkout's line-ending
@@ -145,13 +168,13 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
   `FINAL=HOLD`. No collector, Council cycle, model promotion, paper/live
   trading or broker order submission is authorized.
 
-## Next implementation milestone: DP-M2D.5
+## Next implementation milestone: DP-M2D.6
 
-1. Design the feed-registry registration/capture workflow with immutable
-   profile and epoch provenance, without enabling market writes.
-2. Review a coordinated, reversible feed-aware writer and candle uniqueness
-   cutover against a disposable database clone; keep writes blocked.
-3. Run the relevant Windows MT5 and Stage 7/11 acceptance checks.
+1. Design and rehearse a coordinated feed-aware writer and candle-key cutover
+   on a disposable clone; keep feed-labelled market writes blocked.
+2. Require independently reviewed broker/source evidence before source
+   admission can be represented.
+3. Run Windows MT5 and Stage 7/11 acceptance checks.
 
 ## Commit and report routine
 
