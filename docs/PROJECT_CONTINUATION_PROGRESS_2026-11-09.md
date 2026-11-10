@@ -3,19 +3,21 @@
 Updated: 2026-11-09
 
 This is the handoff note for the next development session. Read it together
-with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md` and
-`docs/DP_M2D_FEED_SCOPED_READS_2026-11-09.md`.
+with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
+`docs/DP_M2D_FEED_SCOPED_READS_2026-11-09.md`, and
+`docs/DP_M2D_FEED_PROVENANCE_2026-11-09.md`.
 
 ## Current position
 
 - Branch: `feature/utc-research-m01-m08`.
-- Latest implementation commit: `f57d876 feat(data): isolate feed-scoped reads and cursors`.
+- Latest implementation commit: `ba6ce30 feat(data): propagate feed
+  provenance to council context`.
+- Handoff report commit: `49f6db9 docs: add continuation progress handoff`.
 - Previous commits: `bb9ca49 feat(database): add guarded local feed schema migration`;
   `95b742a fix(storage): block feed-labelled tick and backfill writes`.
-- Working tree was clean after `f57d876`; this report records that state and
-  is being added as a documentation-only commit.
-- Current engineering milestone: DP-M2D.2 is implemented. DP-M2D.3—feed
-  provenance through data quality, market state and Council context—is next.
+- Current engineering milestone: DP-M2D.3 feed provenance is implemented in
+  code and covered by focused tests. Its event-column migration is not yet
+  applied because PostgreSQL was stopped during this session.
 
 ## Implemented
 
@@ -49,9 +51,25 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md` and
 - Feed-labelled writes are still blocked. Reader APIs do not authorize a
   collector or new data admission.
 
+### Feed provenance — DP-M2D.3
+
+- `DataQualityEngine` now scopes tick and candle availability, freshness,
+  recent-bar, and gap queries to one selected feed. Reports and quality-event
+  receipts retain that feed ID.
+- `MarketStateEngine` carries the selection into both repositories and its
+  frozen `MarketStateSnapshot`.
+- `AgentContextFactory` binds its selection to the snapshot and creates an
+  immutable `AgentContext` that rejects mismatched snapshot, candle, or tick
+  feed IDs. Legacy contexts remain scoped to `feed_id IS NULL`.
+- Added a nullable `data_quality_events.feed_id`, registry foreign key, and
+  index to the ORM and guarded local-only migration. Existing events stay
+  null; no historic events or archive rows were rewritten.
+- Details: `docs/DP_M2D_FEED_PROVENANCE_2026-11-09.md`.
+
 ## Linux workstation and databases
 
-- PostgreSQL is installed and running locally on port `5432`.
+- PostgreSQL is installed locally on port `5432`, but was stopped during this
+  session and did not answer at `localhost:5432`.
 - `oracle_env` is the project-local Python 3.14 environment. The pinned Linux
   dependencies are installed; `MetaTrader5` is absent because the native
   Python package is distributed for Windows.
@@ -83,8 +101,16 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md` and
 
 ## Verification and limits
 
-- Combined focused DP-M2 regression: **156 passed** on Linux.
+- DP-M2D.3 focused feed/storage/context/Council regression, recorded in
+  `ba6ce30`: **191 passed**,
+  15 subtests passed, with 4 existing pytest collection warnings.
 - `git diff --check` passed for the latest code commit.
+- The Stage 8 point-in-time suite was also attempted; it fails at the known
+  pinned HFM policy raw-byte SHA check caused by this checkout's line-ending
+  mismatch. The tracked policy remains unchanged.
+- The new `data_quality_events.feed_id` migration is prepared and covered by
+  offline tests, but has not been applied to `eurusd_oracle_local` because
+  PostgreSQL is stopped. The archive was not accessed.
 - A wider market-state collection attempt could not collect two modules
   because they import `MetaTrader5` on Linux. No live MT5 terminal was started.
 - The earlier broad Stage 7/11 run was 616 passed, 427 failed, 38 errors
@@ -97,18 +123,15 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md` and
   `FINAL=HOLD`. No collector, Council cycle, model promotion, paper/live
   trading or broker order submission is authorized.
 
-## Next implementation milestone: DP-M2D.3
+## Next implementation milestone: DP-M2D.4
 
-1. Add feed selection to `DataQualityEngine`, including feed-scoped tick and
-   candle checks and feed-labelled quality-event receipts.
-2. Thread the selected feed through `MarketStateEngine` and
-   `AgentContextFactory`.
-3. Add feed identity to immutable market-state and agent-context contracts;
-   reject contexts whose snapshot, candles or ticks mix feed IDs.
-4. Keep legacy behavior on `feed_id IS NULL` and keep feed-labelled writes
-   blocked until reader/writer and uniqueness cutover are coordinated.
-5. Test with synthetic providers and a disposable archive clone. Never run
-   migration against `eurusd_oracle_archive`.
+1. Start PostgreSQL and apply the guarded migration to `eurusd_oracle_local`,
+   then verify catalog postflight. Never connect to `eurusd_oracle_archive`.
+2. Bind the quality gate's broker clock to the selected feed/profile; the
+   current MT5 clock provider is not profile-bound.
+3. Design a feed-aware capture registry workflow and coordinated writer plus
+   uniqueness cutover, keeping feed-labelled writes blocked until reviewed.
+4. Run the relevant Windows MT5 and Stage 7/11 acceptance checks.
 
 ## Commit and report routine
 
