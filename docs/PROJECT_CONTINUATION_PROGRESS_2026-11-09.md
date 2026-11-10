@@ -5,19 +5,24 @@ Updated: 2026-11-09
 This is the handoff note for the next development session. Read it together
 with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
 `docs/DP_M2D_FEED_SCOPED_READS_2026-11-09.md`, and
-`docs/DP_M2D_FEED_PROVENANCE_2026-11-09.md`.
+`docs/DP_M2D_FEED_PROVENANCE_2026-11-09.md`, and
+`docs/DP_M2D_PROFILE_BOUND_CLOCK_2026-11-09.md`.
 
 ## Current position
 
 - Branch: `feature/utc-research-m01-m08`.
-- Latest implementation commit: `ba6ce30 feat(data): propagate feed
-  provenance to council context`.
-- Handoff report commit: `49f6db9 docs: add continuation progress handoff`.
+- Latest implementation commit: `a30260c fix(data): bind quality clocks
+  to selected feed`.
+- DP-M2D.3 implementation commit: `ba6ce30 feat(data): propagate feed
+  provenance to council context`; migration status update: `a73b493`.
+- Handoff report was introduced in `49f6db9` and is updated after each
+  implementation commit.
 - Previous commits: `bb9ca49 feat(database): add guarded local feed schema migration`;
   `95b742a fix(storage): block feed-labelled tick and backfill writes`.
-- Current engineering milestone: DP-M2D.3 feed provenance is implemented in
-  code and covered by focused tests. The additive event-column migration was
-  applied twice and passed strict postflight on `eurusd_oracle_local`.
+- Current engineering milestone: DP-M2D.4 profile-bound broker-clock checks
+  are implemented and covered by focused tests. The DP-M2D.3 event-column
+  migration was applied twice and passed strict postflight on
+  `eurusd_oracle_local`.
 
 ## Implemented
 
@@ -66,6 +71,19 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
   null; no historic events or archive rows were rewritten.
 - Details: `docs/DP_M2D_FEED_PROVENANCE_2026-11-09.md`.
 
+### Profile-bound clock — DP-M2D.4
+
+- `DataQualityEngine` now requires a broker profile and capture epoch together
+  and derives the local feed identity from them. A mismatch fails before a
+  provider is constructed.
+- A feed-scoped quality gate without its matching profile has no generic MT5
+  clock fallback; it records a blocking quality issue. A matching profile is
+  passed into `MT5Provider` for its existing terminal/account/instrument
+  checks.
+- `MarketStateEngine` forwards the optional profile and epoch without putting
+  account-profile data in snapshots or Council contexts.
+- Details: `docs/DP_M2D_PROFILE_BOUND_CLOCK_2026-11-09.md`.
+
 ## Linux workstation and databases
 
 - PostgreSQL is installed and running locally on port `5432`.
@@ -103,6 +121,10 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
 - DP-M2D.3 focused feed/storage/context/Council regression, recorded in
   `ba6ce30`: **191 passed**,
   15 subtests passed, with 4 existing pytest collection warnings.
+- DP-M2D.4 focused suite, recorded in `a30260c`: **194 passed**, 15
+  subtests passed, with the same 4
+  existing collection warnings. Synthetic profile/provider tests prove that
+  missing or mismatched bindings fail closed; no terminal was contacted.
 - `git diff --check` passed for the latest code commit.
 - The Stage 8 point-in-time suite was also attempted; it fails at the known
   pinned HFM policy raw-byte SHA check caused by this checkout's line-ending
@@ -123,12 +145,12 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
   `FINAL=HOLD`. No collector, Council cycle, model promotion, paper/live
   trading or broker order submission is authorized.
 
-## Next implementation milestone: DP-M2D.4
+## Next implementation milestone: DP-M2D.5
 
-1. Bind the quality gate's broker clock to the selected feed/profile; the
-   current MT5 clock provider is not profile-bound.
-2. Design a feed-aware capture registry workflow and coordinated writer plus
-   uniqueness cutover, keeping feed-labelled writes blocked until reviewed.
+1. Design the feed-registry registration/capture workflow with immutable
+   profile and epoch provenance, without enabling market writes.
+2. Review a coordinated, reversible feed-aware writer and candle uniqueness
+   cutover against a disposable database clone; keep writes blocked.
 3. Run the relevant Windows MT5 and Stage 7/11 acceptance checks.
 
 ## Commit and report routine
