@@ -7,12 +7,15 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
 `docs/DP_M2D_FEED_SCOPED_READS_2026-11-09.md`, and
 `docs/DP_M2D_FEED_PROVENANCE_2026-11-09.md`, and
 `docs/DP_M2D_PROFILE_BOUND_CLOCK_2026-11-09.md`, and
-`docs/DP_M2D_FEED_REGISTRATION_2026-11-09.md`.
+`docs/DP_M2D_FEED_REGISTRATION_2026-11-09.md`, and
+`docs/DP_M2D_FEED_CUTOVER_REHEARSAL_2026-11-09.md`.
 
 ## Current position
 
 - Branch: `feature/utc-research-m01-m08`.
-- Latest implementation commit: `8e3a253 feat(data): add guarded feed
+- Latest implementation commit: `975096a fix(database): load env for
+  rollback-only feed rehearsal`.
+- DP-M2D.5 implementation commit: `8e3a253 feat(data): add guarded feed
   registry registration`.
 - DP-M2D.4 implementation commit: `a30260c fix(data): bind quality clocks
   to selected feed`.
@@ -102,6 +105,20 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
   registered and no MT5 terminal was used.
 - Details: `docs/DP_M2D_FEED_REGISTRATION_2026-11-09.md`.
 
+### Writer and candle-key cutover rehearsal — DP-M2D.6
+
+- Fixed the rollback-only PostgreSQL lab runner to load `.env` before reading
+  its dedicated disposable lab URL. Its first CLI attempt safely refused
+  because the environment had not been loaded.
+- Reran the exact lab command with explicit database-name confirmation. The
+  temporary-table rehearsal verified distinct legacy/feed candle and tick
+  rows, duplicate suppression, and that the old named-constraint candle
+  writer breaks after `uq_broker_candle` removal.
+- The rehearsal rolled back all temporary DDL and rows. It reported that the
+  production DB was neither connected nor modified. The archive was not
+  accessed; feed-labelled production writes remain blocked.
+- Details: `docs/DP_M2D_FEED_CUTOVER_REHEARSAL_2026-11-09.md`.
+
 ## Linux workstation and databases
 
 - PostgreSQL is installed and running locally on port `5432`.
@@ -148,6 +165,10 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
   pytest collection warnings. It covers preparation, minimal fields,
   idempotency, collision refusal, and local-database guards. No real profile
   was registered.
+- DP-M2D.6 suite, recorded in `975096a`: **202 passed**, 15 subtests passed,
+  and 4 existing
+  collection warnings. The dedicated PostgreSQL lab rehearsal completed and
+  rolled back all its temporary schema and data.
 - `git diff --check` passed for the latest code commit.
 - The Stage 8 point-in-time suite was also attempted; it fails at the known
   pinned HFM policy raw-byte SHA check caused by this checkout's line-ending
@@ -168,13 +189,13 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
   `FINAL=HOLD`. No collector, Council cycle, model promotion, paper/live
   trading or broker order submission is authorized.
 
-## Next implementation milestone: DP-M2D.6
+## Next implementation milestone: DP-M2D.7
 
-1. Design and rehearse a coordinated feed-aware writer and candle-key cutover
-   on a disposable clone; keep feed-labelled market writes blocked.
-2. Require independently reviewed broker/source evidence before source
-   admission can be represented.
-3. Run Windows MT5 and Stage 7/11 acceptance checks.
+1. Design an operational deployment and rollback sequence for writer
+   replacement and candle-key cutover, with lock, capacity, and backup gates.
+2. Keep feed-labelled writers blocked until the sequence is reviewed and
+   Windows regression passes.
+3. Do not cut over or alter the archive as part of the rehearsal.
 
 ## Commit and report routine
 
