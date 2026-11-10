@@ -18,8 +18,12 @@ with the architecture references and current DP-M2D records:
 ## Current position
 
 - Branch: `feature/utc-research-m01-m08`.
-- Latest implementation commit: `975096a fix(database): load env for
-  rollback-only feed rehearsal`.
+- Latest implementation commit: `60e49e4 feat(database): guard feed
+  migration on archive clone`.
+- Latest reference-document commit: `e854875 docs: add project atlas and
+  future masterplan`.
+- Previous DP-M2D.6 implementation commit: `975096a fix(database): load env
+  for rollback-only feed rehearsal`.
 - Latest design milestone commit: `b906d73 docs: define feed candle cutover
   sequence`.
 - DP-M2D.5 implementation commit: `8e3a253 feat(data): add guarded feed
@@ -32,10 +36,10 @@ with the architecture references and current DP-M2D records:
   implementation or design milestone commit.
 - Previous commits: `bb9ca49 feat(database): add guarded local feed schema migration`;
   `95b742a fix(storage): block feed-labelled tick and backfill writes`.
-- Current engineering milestone: DP-M2D.4 profile-bound broker-clock checks
-  are implemented and covered by focused tests. The DP-M2D.3 event-column
-  migration was applied twice and passed strict postflight on
-  `eurusd_oracle_local`.
+- Current engineering milestone: DP-M2D.8 clone-only additive schema
+  migration is implemented and verified on the disposable archive clone.
+  Feed-labelled production writes remain blocked. Earlier milestones and
+  local migration history are recorded below.
 
 ## Reference PDFs added
 
@@ -186,6 +190,34 @@ with the architecture references and current DP-M2D records:
   parsed JSON content as the tracked copy; the tracked copy was retained.
 - The files under `logs/` are Git-ignored and will not travel in commits.
 
+### Clone-only additive migration — DP-M2D.8 (commit `60e49e4`)
+
+- Created the disposable PostgreSQL clone `eurusd_oracle_dp_m2d8_clone` from
+  `eurusd_oracle_archive`. The archive itself was not connected to by the
+  migration and remains unchanged. The clone is owned by restricted role
+  `Komarchy`.
+- Added `backend/database/feed_clone_migration.py`, a separate clone-only
+  command. It requires a dedicated clone URL and exact database-name
+  confirmation; checks the target, role, archive sessions, disk margin,
+  source row counts, legacy uniqueness, and absence of pre-existing
+  feed-labelled rows; then applies only the additive feed schema and runs
+  postflight verification. It does not rewrite rows, remove constraints, or
+  authorize feed writes.
+- Verified the migration/idempotence path on the clone. Counts before and
+  after were unchanged: `ticks=30,744,086`, `broker_candles=75,528`,
+  `candles=2`. Legacy `uq_tick_fingerprint` and `uq_broker_candle` remain.
+  No feed-labelled rows were written; archive sessions at measurement time: 0.
+- Clone database size: `12,752,918,207` bytes (about 12.75 GB). `ticks` total
+  relation size was `12,614,270,976` bytes (about 12.6 GB), including indexes;
+  current feed indexes are empty (8 KB apiece). PostgreSQL reported roughly
+  124 GB free before migration. This is a size baseline only: no lock-duration,
+  WAL-volume, backup/restore, or performance acceptance measurement is claimed.
+- Feed-aware production writers remain blocked. The clone schema migration
+  does not test or authorize production writer retries/checkpoints, remove the
+  legacy constraint, or enable collection. Continue with isolated writer and
+  recovery rehearsals only after a safe transaction/rollback harness is
+  reviewed; keep all operational gates at HOLD.
+
 ## Verification and limits
 
 - DP-M2D.3 focused feed/storage/context/Council regression, recorded in
@@ -206,6 +238,9 @@ with the architecture references and current DP-M2D records:
   rolled back all its temporary schema and data.
 - DP-M2D.7 is a documentation-only cutover design. It does not pass gates or
   authorize the constraint change, feed writes, or archive modification.
+- DP-M2D.8 focused clone-migration/schema/rehearsal/writer-compatibility suite:
+  **64 passed**. `git diff --check` passed. This suite uses isolated fixtures
+  and does not claim full-scale writer, retry, checkpoint, or restore testing.
 - `git diff --check` passed for the latest code commit.
 - The Stage 8 point-in-time suite was also attempted; it fails at the known
   pinned HFM policy raw-byte SHA check caused by this checkout's line-ending
@@ -226,11 +261,11 @@ with the architecture references and current DP-M2D records:
   `FINAL=HOLD`. No collector, Council cycle, model promotion, paper/live
   trading or broker order submission is authorized.
 
-## Next implementation milestone: DP-M2D.8
+## Next implementation milestone: DP-M2D.8 continuation
 
-1. Exercise real feed-aware writers, retries, and checkpoints only on a
-   disposable archive clone; collect archive-scale index, lock, disk, WAL,
-   and restore measurements.
+1. Build and review a rollback-safe, clone-scoped writer/retry/checkpoint
+   rehearsal that cannot commit persistent rows; measure lock time and WAL,
+   then perform a documented clone backup/restore check.
 2. Complete Windows MT5 and Stage 7/11 acceptance and independent source
    review before considering any operational write authorization.
 3. Keep feed-labelled writers blocked; do not cut over or alter the archive.
