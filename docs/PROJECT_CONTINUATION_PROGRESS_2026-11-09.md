@@ -315,6 +315,13 @@ with the architecture references and current DP-M2D records:
   and Stage 11 read-model failures hit the known pinned historical-policy
   raw-byte SHA mismatch in this LF checkout. This run is not an acceptance
   pass; the other failures have not all been individually classified.
+- Windows full-suite result reported after pulling `feature/utc-research-m01-m08`:
+  **5,712 passed, 73 skipped, 617 subtests passed, 5 collection warnings** in
+  3,410.88 seconds. `$tests.Count` was `0`, so the pytest command received no
+  paths and performed default full-project discovery; this includes the
+  Stage 7/11 modules rather than being limited to them. The pasted output did
+  not include `git rev-parse --short HEAD`; expected tested commit is `a3ad331`
+  based on the preceding pull. No live-terminal run is claimed.
 - `git diff --check` passed for the latest code commit.
 - The Stage 8 point-in-time suite was also attempted; it fails at the known
   pinned HFM policy raw-byte SHA check caused by this checkout's line-ending
