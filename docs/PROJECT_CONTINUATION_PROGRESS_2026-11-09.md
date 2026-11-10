@@ -18,7 +18,9 @@ with the architecture references and current DP-M2D records:
 ## Current position
 
 - Branch: `feature/utc-research-m01-m08`.
-- Latest implementation commit: `60e49e4 feat(database): guard feed
+- Latest implementation commit: `3936bea feat(database): rehearse clone
+  writer retries safely`.
+- Previous implementation commit: `60e49e4 feat(database): guard feed
   migration on archive clone`.
 - Latest reference-document commit: `e854875 docs: add project atlas and
   future masterplan`.
@@ -36,10 +38,11 @@ with the architecture references and current DP-M2D records:
   implementation or design milestone commit.
 - Previous commits: `bb9ca49 feat(database): add guarded local feed schema migration`;
   `95b742a fix(storage): block feed-labelled tick and backfill writes`.
-- Current engineering milestone: DP-M2D.8 clone-only additive schema
-  migration is implemented and verified on the disposable archive clone.
-  Feed-labelled production writes remain blocked. Earlier milestones and
-  local migration history are recorded below.
+- Current engineering milestone: DP-M2D.8 clone-only additive schema,
+  rollback-safe legacy writer retry rehearsal, and full backup/restore check
+  are complete on the disposable archive clone. Feed-labelled production
+  writes remain blocked. Earlier milestones and local migration history are
+  recorded below.
 
 ## Reference PDFs added
 
@@ -213,10 +216,43 @@ with the architecture references and current DP-M2D records:
   124 GB free before migration. This is a size baseline only: no lock-duration,
   WAL-volume, backup/restore, or performance acceptance measurement is claimed.
 - Feed-aware production writers remain blocked. The clone schema migration
-  does not test or authorize production writer retries/checkpoints, remove the
-  legacy constraint, or enable collection. Continue with isolated writer and
-  recovery rehearsals only after a safe transaction/rollback harness is
-  reviewed; keep all operational gates at HOLD.
+  does not authorize feed-labelled production writes, remove the legacy
+  constraint, or enable collection. The later clone-only rehearsal below
+  checks legacy-writer retry behavior inside a rollback boundary; operational
+  gates remain at HOLD.
+
+### Clone writer/recovery rehearsal — DP-M2D.8 continuation (commit `3936bea`)
+
+- Added `backend/database/feed_clone_rehearsal.py`. It runs the existing
+  `BatchTickStorage` and `BrokerCandleStorage` classes on the clone using
+  savepoint-joined sessions within one outer transaction. Exact database-name
+  confirmation and the clone migration preflight are required. Synthetic
+  negative IDs avoid advancing sequences; the outer transaction always rolls
+  back and postflight checks counts and synthetic IDs.
+- The clone run inserted one legacy tick and one legacy broker candle inside
+  the transaction. Retrying each inserted zero duplicates. The tick query
+  cursor advanced inside the transaction; this cursor is not durable. A
+  separate test confirms `ForwardFeedStore.resume_cursor()` survives store
+  reopen in its SQLite fixture. Feed-labelled writes were verified to fail
+  before opening a database session.
+- Before rollback, both table locks were granted as `RowExclusiveLock`.
+  The four writer calls took 10.236 ms (tick insert), 2.221 ms (tick retry),
+  6.696 ms (candle insert), and 2.247 ms (candle retry) in this single local
+  rehearsal. PostgreSQL reported an 84,248-byte cluster-wide WAL LSN delta;
+  this is an observed rehearsal value, not an isolated benchmark. After
+  rollback, canonical counts matched the baseline and no synthetic rows
+  remained. Database size was unchanged; sequences did not advance.
+- Completed a full logical backup and restore verification. A 1,963,154,319
+  byte custom-format dump restored into a temporary database in about 8.5
+  minutes using four workers. Restored counts matched (`ticks=30,744,086`,
+  `broker_candles=75,528`, `candles=2`); all five feed indexes were valid and
+  legacy `uq_broker_candle` remained. The restored database measured
+  12,905,494,207 bytes. The temporary restore database and dump were removed;
+  the working clone remains. The archive was not modified.
+- These results validate rollback, writer duplicate behavior, and logical
+  recoverability on this workstation. They do not authorize feed-labelled
+  writes or claim production lock/WAL performance, Windows acceptance, or
+  independent source review.
 
 ## Verification and limits
 
@@ -239,8 +275,13 @@ with the architecture references and current DP-M2D records:
 - DP-M2D.7 is a documentation-only cutover design. It does not pass gates or
   authorize the constraint change, feed writes, or archive modification.
 - DP-M2D.8 focused clone-migration/schema/rehearsal/writer-compatibility suite:
-  **64 passed**. `git diff --check` passed. This suite uses isolated fixtures
-  and does not claim full-scale writer, retry, checkpoint, or restore testing.
+  **70 passed**. `git diff --check` passed. The actual clone rehearsal and
+  logical backup/restore were run separately and recorded above.
+- An attempt to collect the existing `backend/data_engine/test_forward_store.py`
+  module was blocked because its test fixture imports `MetaTrader5`, which is
+  unavailable on Linux. A new SQLite test directly exercises the durable
+  `ForwardFeedStore` resume cursor across store reopen. No MT5 terminal was
+  started.
 - `git diff --check` passed for the latest code commit.
 - The Stage 8 point-in-time suite was also attempted; it fails at the known
   pinned HFM policy raw-byte SHA check caused by this checkout's line-ending
@@ -248,7 +289,7 @@ with the architecture references and current DP-M2D records:
 - The new `data_quality_events.feed_id` migration was applied twice to
   `eurusd_oracle_local`; strict postflight verified the column, foreign key,
   and index. Both runs reported zero legacy-row changes and zero feed-labelled
-  writes. The archive was not accessed.
+  writes. That local migration did not access the archive.
 - A wider market-state collection attempt could not collect two modules
   because they import `MetaTrader5` on Linux. No live MT5 terminal was started.
 - The earlier broad Stage 7/11 run was 616 passed, 427 failed, 38 errors
@@ -261,11 +302,12 @@ with the architecture references and current DP-M2D records:
   `FINAL=HOLD`. No collector, Council cycle, model promotion, paper/live
   trading or broker order submission is authorized.
 
-## Next implementation milestone: DP-M2D.8 continuation
+## Next implementation milestone: DP-M2D.9 readiness review
 
-1. Build and review a rollback-safe, clone-scoped writer/retry/checkpoint
-   rehearsal that cannot commit persistent rows; measure lock time and WAL,
-   then perform a documented clone backup/restore check.
+1. Reconcile the cutover sequence against the current writer/read paths and
+   define the bounded implementation required to replace legacy uniqueness
+   safely. Keep the old candle constraint in place until every relevant
+   writer is proven compatible.
 2. Complete Windows MT5 and Stage 7/11 acceptance and independent source
    review before considering any operational write authorization.
 3. Keep feed-labelled writers blocked; do not cut over or alter the archive.
