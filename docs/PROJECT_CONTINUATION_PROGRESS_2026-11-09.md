@@ -310,6 +310,11 @@ with the architecture references and current DP-M2D records:
   unavailable on Linux. A new SQLite test directly exercises the durable
   `ForwardFeedStore` resume cursor across store reopen. No MT5 terminal was
   started.
+- Most recent Linux Stage 7/11 module run: **627 passed, 454 failed** across
+  the selected 14 Stage 7/11 test modules. Representative Stage 7 baseline
+  and Stage 11 read-model failures hit the known pinned historical-policy
+  raw-byte SHA mismatch in this LF checkout. This run is not an acceptance
+  pass; the other failures have not all been individually classified.
 - `git diff --check` passed for the latest code commit.
 - The Stage 8 point-in-time suite was also attempted; it fails at the known
   pinned HFM policy raw-byte SHA check caused by this checkout's line-ending
@@ -320,9 +325,10 @@ with the architecture references and current DP-M2D records:
   writes. That local migration did not access the archive.
 - A wider market-state collection attempt could not collect two modules
   because they import `MetaTrader5` on Linux. No live MT5 terminal was started.
-- The earlier broad Stage 7/11 run was 616 passed, 427 failed, 38 errors
-  before the missing ignored reports were restored. It has not been rerun
-  since; the pinned policy line-ending mismatch remains in this checkout.
+- The earlier broader Stage 7/11 run was 616 passed, 427 failed, and 38
+  errors before missing ignored reports were restored. The selected module
+  run above is the latest validation; the pinned policy line-ending mismatch
+  remains in this checkout.
 - Windows compilation and Stage 7/11 regression remain outstanding for
   acceptance. The user explicitly authorized commits after focused tests; no
   Windows result has been claimed.
