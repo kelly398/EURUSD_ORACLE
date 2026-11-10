@@ -16,8 +16,8 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
 - Previous commits: `bb9ca49 feat(database): add guarded local feed schema migration`;
   `95b742a fix(storage): block feed-labelled tick and backfill writes`.
 - Current engineering milestone: DP-M2D.3 feed provenance is implemented in
-  code and covered by focused tests. Its event-column migration is not yet
-  applied because PostgreSQL was stopped during this session.
+  code and covered by focused tests. The additive event-column migration was
+  applied twice and passed strict postflight on `eurusd_oracle_local`.
 
 ## Implemented
 
@@ -68,8 +68,7 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
 
 ## Linux workstation and databases
 
-- PostgreSQL is installed locally on port `5432`, but was stopped during this
-  session and did not answer at `localhost:5432`.
+- PostgreSQL is installed and running locally on port `5432`.
 - `oracle_env` is the project-local Python 3.14 environment. The pinned Linux
   dependencies are installed; `MetaTrader5` is absent because the native
   Python package is distributed for Windows.
@@ -108,9 +107,10 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
 - The Stage 8 point-in-time suite was also attempted; it fails at the known
   pinned HFM policy raw-byte SHA check caused by this checkout's line-ending
   mismatch. The tracked policy remains unchanged.
-- The new `data_quality_events.feed_id` migration is prepared and covered by
-  offline tests, but has not been applied to `eurusd_oracle_local` because
-  PostgreSQL is stopped. The archive was not accessed.
+- The new `data_quality_events.feed_id` migration was applied twice to
+  `eurusd_oracle_local`; strict postflight verified the column, foreign key,
+  and index. Both runs reported zero legacy-row changes and zero feed-labelled
+  writes. The archive was not accessed.
 - A wider market-state collection attempt could not collect two modules
   because they import `MetaTrader5` on Linux. No live MT5 terminal was started.
 - The earlier broad Stage 7/11 run was 616 passed, 427 failed, 38 errors
@@ -125,13 +125,11 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
 
 ## Next implementation milestone: DP-M2D.4
 
-1. Start PostgreSQL and apply the guarded migration to `eurusd_oracle_local`,
-   then verify catalog postflight. Never connect to `eurusd_oracle_archive`.
-2. Bind the quality gate's broker clock to the selected feed/profile; the
+1. Bind the quality gate's broker clock to the selected feed/profile; the
    current MT5 clock provider is not profile-bound.
-3. Design a feed-aware capture registry workflow and coordinated writer plus
+2. Design a feed-aware capture registry workflow and coordinated writer plus
    uniqueness cutover, keeping feed-labelled writes blocked until reviewed.
-4. Run the relevant Windows MT5 and Stage 7/11 acceptance checks.
+3. Run the relevant Windows MT5 and Stage 7/11 acceptance checks.
 
 ## Commit and report routine
 

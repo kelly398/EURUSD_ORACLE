@@ -33,21 +33,20 @@ context that combines feed identities.
 - The expanded Stage 8 point-in-time test file still fails because the
   checkout's tracked HFM policy bytes do not match the pinned raw-byte SHA-256
   (the known Linux line-ending mismatch). The tracked policy was not changed.
-- PostgreSQL was stopped during this session (`localhost:5432` returned no
-  response). The additive migration code is covered offline, but the new
-  `data_quality_events.feed_id` column and index have not yet been applied to
-  `eurusd_oracle_local`.
+- PostgreSQL was restarted after the initial offline checks. The guarded
+  additive migration then completed twice on `eurusd_oracle_local`; its strict
+  postflight verified the nullable event column, registry foreign key, and
+  feed index. It reported zero legacy-row changes and zero feed-labelled
+  writes.
 - `eurusd_oracle_archive` was not accessed or modified. No MT5 terminal or
   live data source was used. `FINAL=HOLD`; independent gates remain 0/11 and
   source-family admissions remain 0/13.
 
 ## Next
 
-1. Start local PostgreSQL and apply the guarded, idempotent migration to
-   `eurusd_oracle_local`; verify its postflight without touching the archive.
-2. Bind the quality gate's broker-clock source to the selected feed/profile;
+1. Bind the quality gate's broker-clock source to the selected feed/profile;
    the existing MT5 clock provider is not yet profile-bound by this milestone.
-3. Add a feed-aware capture registry workflow and a separately reviewed
+2. Add a feed-aware capture registry workflow and a separately reviewed
    writer/uniqueness cutover plan. Keep writes blocked until both are proven.
-4. Run the relevant Windows MT5 and Stage 7/11 acceptance checks.
+3. Run the relevant Windows MT5 and Stage 7/11 acceptance checks.
 
