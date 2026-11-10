@@ -8,13 +8,16 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
 `docs/DP_M2D_FEED_PROVENANCE_2026-11-09.md`, and
 `docs/DP_M2D_PROFILE_BOUND_CLOCK_2026-11-09.md`, and
 `docs/DP_M2D_FEED_REGISTRATION_2026-11-09.md`, and
-`docs/DP_M2D_FEED_CUTOVER_REHEARSAL_2026-11-09.md`.
+`docs/DP_M2D_FEED_CUTOVER_REHEARSAL_2026-11-09.md`, and
+`docs/DP_M2D_CUTOVER_SEQUENCE_2026-11-09.md`.
 
 ## Current position
 
 - Branch: `feature/utc-research-m01-m08`.
 - Latest implementation commit: `975096a fix(database): load env for
   rollback-only feed rehearsal`.
+- Latest design milestone commit: `b906d73 docs: define feed candle cutover
+  sequence`.
 - DP-M2D.5 implementation commit: `8e3a253 feat(data): add guarded feed
   registry registration`.
 - DP-M2D.4 implementation commit: `a30260c fix(data): bind quality clocks
@@ -22,7 +25,7 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
 - DP-M2D.3 implementation commit: `ba6ce30 feat(data): propagate feed
   provenance to council context`; migration status update: `a73b493`.
 - Handoff report was introduced in `49f6db9` and is updated after each
-  implementation commit.
+  implementation or design milestone commit.
 - Previous commits: `bb9ca49 feat(database): add guarded local feed schema migration`;
   `95b742a fix(storage): block feed-labelled tick and backfill writes`.
 - Current engineering milestone: DP-M2D.4 profile-bound broker-clock checks
@@ -119,6 +122,16 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
   accessed; feed-labelled production writes remain blocked.
 - Details: `docs/DP_M2D_FEED_CUTOVER_REHEARSAL_2026-11-09.md`.
 
+### Candle-key cutover plan — DP-M2D.7
+
+- Added the gated deployment sequence for writers, readers, concurrent
+  indexes, bounded constraint removal, and post-cutover verification.
+- Documented the rollback boundary: after overlapping feed-labelled candle
+  rows exist, restoring the old global unique constraint may be impossible.
+- No production or archive migration was run. Archive-scale build, lock,
+  capacity, restore, Windows, and Stage 7/11 evidence remain outstanding.
+- Details: `docs/DP_M2D_CUTOVER_SEQUENCE_2026-11-09.md`.
+
 ## Linux workstation and databases
 
 - PostgreSQL is installed and running locally on port `5432`.
@@ -169,6 +182,8 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
   and 4 existing
   collection warnings. The dedicated PostgreSQL lab rehearsal completed and
   rolled back all its temporary schema and data.
+- DP-M2D.7 is a documentation-only cutover design. It does not pass gates or
+  authorize the constraint change, feed writes, or archive modification.
 - `git diff --check` passed for the latest code commit.
 - The Stage 8 point-in-time suite was also attempted; it fails at the known
   pinned HFM policy raw-byte SHA check caused by this checkout's line-ending
@@ -189,13 +204,14 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
   `FINAL=HOLD`. No collector, Council cycle, model promotion, paper/live
   trading or broker order submission is authorized.
 
-## Next implementation milestone: DP-M2D.7
+## Next implementation milestone: DP-M2D.8
 
-1. Design an operational deployment and rollback sequence for writer
-   replacement and candle-key cutover, with lock, capacity, and backup gates.
-2. Keep feed-labelled writers blocked until the sequence is reviewed and
-   Windows regression passes.
-3. Do not cut over or alter the archive as part of the rehearsal.
+1. Exercise real feed-aware writers, retries, and checkpoints only on a
+   disposable archive clone; collect archive-scale index, lock, disk, WAL,
+   and restore measurements.
+2. Complete Windows MT5 and Stage 7/11 acceptance and independent source
+   review before considering any operational write authorization.
+3. Keep feed-labelled writers blocked; do not cut over or alter the archive.
 
 ## Commit and report routine
 
