@@ -15,6 +15,7 @@ import os
 import sys
 
 from sqlalchemy.engine import make_url
+from dotenv import load_dotenv
 
 
 LAB_NAME = "eurusd_oracle_dp_m2b_lab"
@@ -239,6 +240,7 @@ def rehearse(cursor):
 
 
 def run_lab():
+    load_dotenv()
     raw = os.environ.get(LAB_URL_ENV)
     lab = validate_lab_url(raw, os.environ.get("DATABASE_URL"))
 

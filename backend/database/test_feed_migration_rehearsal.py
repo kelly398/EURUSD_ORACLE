@@ -70,6 +70,20 @@ def test_lab_url_cannot_be_implicit_production_url():
     assert 'connection.commit(' not in source
 
 
+def test_lab_runner_loads_local_environment_before_reading_urls(monkeypatch):
+    loaded = []
+
+    def fake_load_dotenv():
+        loaded.append(True)
+        monkeypatch.setenv(lab.LAB_URL_ENV, "not-a-valid-url")
+
+    monkeypatch.setattr(lab, "load_dotenv", fake_load_dotenv)
+    with pytest.raises(ValueError):
+        lab.run_lab()
+
+    assert loaded == [True]
+
+
 def test_all_ddl_targets_temp_lab_tables_only():
     assert len(lab.CREATE_TEMP_TABLES) == 3
     assert all("CREATE TEMP TABLE dp_m2b_" in s for s in lab.CREATE_TEMP_TABLES)
