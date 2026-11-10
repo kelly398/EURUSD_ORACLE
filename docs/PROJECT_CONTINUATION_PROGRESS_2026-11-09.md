@@ -18,8 +18,10 @@ with the architecture references and current DP-M2D records:
 ## Current position
 
 - Branch: `feature/utc-research-m01-m08`.
-- Latest implementation commit: `1dc8e30 fix(storage): guard feed ticks and
-  fingerprint legacy writes`.
+- Latest implementation commit: `7aa900d feat(database): rehearse clone
+  candle cutover rollback`.
+- Previous implementation commit: `1dc8e30 fix(storage): guard feed ticks
+  and fingerprint legacy writes`.
 - Previous implementation commit: `3936bea feat(database): rehearse clone
   writer retries safely`.
 - Previous implementation commit: `60e49e4 feat(database): guard feed
@@ -40,12 +42,12 @@ with the architecture references and current DP-M2D records:
   implementation or design milestone commit.
 - Previous commits: `bb9ca49 feat(database): add guarded local feed schema migration`;
   `95b742a fix(storage): block feed-labelled tick and backfill writes`.
-- Current engineering milestone: DP-M2D.8 clone-only additive schema,
-  rollback-safe legacy writer retry rehearsal, and full backup/restore check
-  are complete on the disposable archive clone. DP-M2D.9 writer inventory
-  found and closed a missing historical tick feed guard; feed-labelled
-  production writes remain blocked. Earlier milestones and local migration
-  history are recorded below.
+- Current engineering milestone: DP-M2D.8 clone migration, rollback-safe
+  writer retry rehearsal, and backup/restore check are complete. DP-M2D.9
+  writer inventory and transactional old-constraint removal rehearsal are
+  complete on the disposable archive clone. Feed-labelled production writes
+  remain blocked. Earlier milestones and local migration history are recorded
+  below.
 
 ## Reference PDFs added
 
@@ -279,8 +281,25 @@ with the architecture references and current DP-M2D records:
   single-tick storage, clone safeguards, schema, and cutover writer tests;
   `git diff --check` passed. No database writes were part of this code change.
 - The inventory is a repository search, not proof that no external script or
-  operator process writes these tables. Windows MT5 and Stage 7/11 acceptance
-  plus independent source review remain open gates.
+  operator process writes these tables. Live MT5 terminal/profile acceptance
+  and independent source review remain open gates.
+
+### Transactional candle cutover rehearsal — DP-M2D.9 (commit `7aa900d`)
+
+- Added `backend/database/feed_clone_cutover_rehearsal.py`. It checks both
+  replacement candle indexes are unique, ready, and valid; verifies no
+  feed-labelled candle rows; drops `uq_broker_candle` only inside a bounded
+  transaction on `eurusd_oracle_dp_m2d8_clone`; exercises the real
+  `BrokerCandleStorage` legacy insert and duplicate retry; then rolls back.
+- The clone run confirmed the old constraint was absent inside the
+  transaction, one legacy candle inserted, and the retry inserted zero. The
+  writer's internal commits remained inside the outer transaction. Rollback
+  restored `uq_broker_candle`, kept replacement indexes valid, removed the
+  synthetic row, preserved all three baseline counts, and did not advance the
+  sequence. No feed-labelled row was inserted; the archive was not modified.
+- Focused DP-M2D.9 clone/cutover/schema suite: **50 passed**;
+  `git diff --check` passed. This validates only the disposable-clone legacy
+  writer path; it does not authorize production cutover or feed writes.
 
 ## Verification and limits
 
@@ -322,6 +341,10 @@ with the architecture references and current DP-M2D records:
   Stage 7/11 modules rather than being limited to them. The pasted output did
   not include `git rev-parse --short HEAD`; expected tested commit is `a3ad331`
   based on the preceding pull. No live-terminal run is claimed.
+- The Windows full-suite run covers the Stage 7/11 test modules, but it does
+  not establish live MT5 terminal/profile acceptance or independent source
+  review. Verify the exact tested HEAD if this run will be used as a formal
+  platform acceptance anchor.
 - `git diff --check` passed for the latest code commit.
 - The Stage 8 point-in-time suite was also attempted; it fails at the known
   pinned HFM policy raw-byte SHA check caused by this checkout's line-ending
@@ -336,21 +359,21 @@ with the architecture references and current DP-M2D records:
   errors before missing ignored reports were restored. The selected module
   run above is the latest validation; the pinned policy line-ending mismatch
   remains in this checkout.
-- Windows compilation and Stage 7/11 regression remain outstanding for
-  acceptance. The user explicitly authorized commits after focused tests; no
-  Windows result has been claimed.
+- Windows full-suite regression has passed as reported above. Live MT5
+  terminal/profile acceptance and independent source review remain
+  outstanding. The user explicitly authorized commits after focused tests.
 - Independent gates remain 0/11 and source-family admissions 0/13.
   `FINAL=HOLD`. No collector, Council cycle, model promotion, paper/live
   trading or broker order submission is authorized.
 
-## Next implementation milestone: DP-M2D.9 readiness review
+## Next implementation milestone: DP-M2D.10 feed-writer authorization gate
 
-1. Complete Windows MT5 and Stage 7/11 acceptance and independent source
-   review before considering any operational write authorization.
-2. Rehearse the old-constraint removal and legacy-only writer behavior only
-   on the disposable clone after the platform and cutover dependencies are
-   reviewed. Keep the production/archive constraint unchanged.
-3. Keep feed-labelled writers blocked; do not cut over or alter the archive.
+1. Verify the exact Windows test commit and skipped-test reasons; do not infer
+   live terminal acceptance from pytest alone.
+2. Obtain independent review of feed identity/source evidence and the proposed
+   operational change before considering feed-labelled writes.
+3. Keep feed-labelled writers blocked and the archive unchanged until those
+   external gates are independently satisfied.
 
 ## Commit and report routine
 
