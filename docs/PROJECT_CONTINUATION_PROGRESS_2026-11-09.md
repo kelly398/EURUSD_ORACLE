@@ -14,6 +14,7 @@ with the architecture references and current DP-M2D records:
 - `docs/DP_M2D_FEED_REGISTRATION_2026-11-09.md`
 - `docs/DP_M2D_FEED_CUTOVER_REHEARSAL_2026-11-09.md`
 - `docs/DP_M2D_CUTOVER_SEQUENCE_2026-11-09.md`
+- `docs/DP_M2D_FEED_WRITE_AUTHORIZATION_REVIEW_PACKET_2026-11-09.md`
 
 ## Current position
 
@@ -46,8 +47,9 @@ with the architecture references and current DP-M2D records:
   writer retry rehearsal, and backup/restore check are complete. DP-M2D.9
   writer inventory and transactional old-constraint removal rehearsal are
   complete on the disposable archive clone. Feed-labelled production writes
-  remain blocked. Earlier milestones and local migration history are recorded
-  below.
+  remain blocked. DP-M2D.10 now has a bounded independent-review packet draft;
+  no external gate has been promoted. Earlier milestones and local migration
+  history are recorded below.
 
 ## Reference PDFs added
 
@@ -368,12 +370,13 @@ with the architecture references and current DP-M2D records:
 
 ## Next implementation milestone: DP-M2D.10 feed-writer authorization gate
 
-1. Verify the exact Windows test commit and skipped-test reasons; do not infer
+1. Confirm the exact Windows test commit and skipped-test reasons; do not infer
    live terminal acceptance from pytest alone.
-2. Obtain independent review of feed identity/source evidence and the proposed
-   operational change before considering feed-labelled writes.
+2. Have an independent reviewer assess the packet and provide source evidence
+   for the 11 gates. No reviewer has been contacted by this agent.
 3. Keep feed-labelled writers blocked and the archive unchanged until those
-   external gates are independently satisfied.
+   external gates are independently satisfied and a separate change approval
+   exists.
 
 ## Commit and report routine
 
