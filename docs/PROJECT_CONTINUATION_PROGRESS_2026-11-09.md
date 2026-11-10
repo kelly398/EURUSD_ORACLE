@@ -18,7 +18,9 @@ with the architecture references and current DP-M2D records:
 ## Current position
 
 - Branch: `feature/utc-research-m01-m08`.
-- Latest implementation commit: `3936bea feat(database): rehearse clone
+- Latest implementation commit: `1dc8e30 fix(storage): guard feed ticks and
+  fingerprint legacy writes`.
+- Previous implementation commit: `3936bea feat(database): rehearse clone
   writer retries safely`.
 - Previous implementation commit: `60e49e4 feat(database): guard feed
   migration on archive clone`.
@@ -40,9 +42,10 @@ with the architecture references and current DP-M2D records:
   `95b742a fix(storage): block feed-labelled tick and backfill writes`.
 - Current engineering milestone: DP-M2D.8 clone-only additive schema,
   rollback-safe legacy writer retry rehearsal, and full backup/restore check
-  are complete on the disposable archive clone. Feed-labelled production
-  writes remain blocked. Earlier milestones and local migration history are
-  recorded below.
+  are complete on the disposable archive clone. DP-M2D.9 writer inventory
+  found and closed a missing historical tick feed guard; feed-labelled
+  production writes remain blocked. Earlier milestones and local migration
+  history are recorded below.
 
 ## Reference PDFs added
 
@@ -254,6 +257,31 @@ with the architecture references and current DP-M2D records:
   writes or claim production lock/WAL performance, Windows acceptance, or
   independent source review.
 
+### Writer inventory corrections — DP-M2D.9 readiness review (commit `1dc8e30`)
+
+- Mapped the in-repository writers that can touch legacy ticks and broker
+  candles. `BatchTickStorage` is used by `MT5TickIngestor`; `BrokerCandleStorage`
+  is used by `MT5BarIngestor`; historical backfill has `insert_ticks` and
+  `insert_bars`. Broker-candle paths use untargeted `ON CONFLICT DO NOTHING`.
+  The named `uq_broker_candle` conflict target remains only in the isolated
+  old-writer regression rehearsal, where its breakage after constraint removal
+  is intentional.
+- Found that `historical_backfill.insert_ticks` lacked the feed-label guard.
+  It now rejects any row containing `feed_id`, including `feed_id=None`, before
+  opening a transaction, matching the other batch writers.
+- Found that the older single-row `TickStorage` used by `TickCollector` omitted
+  the required `fingerprint`. It now computes the legacy fingerprint from the
+  minimal `MarketTick` fields and the model's zero defaults. No in-repository
+  caller of `TickCollector` was found. `CandleStorage` writes the separate
+  derived `candles` table, not `broker_candles`; `ForwardFeedStore` writes its
+  own `oracle_utc_*` evidence tables.
+- Focused DP-M2D.9 regression: **85 passed** across historical backfill,
+  single-tick storage, clone safeguards, schema, and cutover writer tests;
+  `git diff --check` passed. No database writes were part of this code change.
+- The inventory is a repository search, not proof that no external script or
+  operator process writes these tables. Windows MT5 and Stage 7/11 acceptance
+  plus independent source review remain open gates.
+
 ## Verification and limits
 
 - DP-M2D.3 focused feed/storage/context/Council regression, recorded in
@@ -304,12 +332,11 @@ with the architecture references and current DP-M2D records:
 
 ## Next implementation milestone: DP-M2D.9 readiness review
 
-1. Reconcile the cutover sequence against the current writer/read paths and
-   define the bounded implementation required to replace legacy uniqueness
-   safely. Keep the old candle constraint in place until every relevant
-   writer is proven compatible.
-2. Complete Windows MT5 and Stage 7/11 acceptance and independent source
+1. Complete Windows MT5 and Stage 7/11 acceptance and independent source
    review before considering any operational write authorization.
+2. Rehearse the old-constraint removal and legacy-only writer behavior only
+   on the disposable clone after the platform and cutover dependencies are
+   reviewed. Keep the production/archive constraint unchanged.
 3. Keep feed-labelled writers blocked; do not cut over or alter the archive.
 
 ## Commit and report routine
