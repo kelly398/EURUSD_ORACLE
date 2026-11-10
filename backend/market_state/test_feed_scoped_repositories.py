@@ -12,6 +12,7 @@ from sqlalchemy.pool import StaticPool
 from backend.candle_engine import broker_candle_storage
 from backend.data_engine import batch_tick_storage
 from backend.data_engine.feed_identity import FeedIdentityError
+from backend.data_engine.feed_identity import build_local_feed_identity
 from backend.database.models import (
     Base,
     BrokerCandle,
@@ -221,6 +222,73 @@ def test_quality_engine_legacy_mode_excludes_feed_rows(feed_db):
     assert report["feed_id"] is None
     assert report["latest_tick"] == START.replace(tzinfo=None)
     assert report["latest_broker_candle"] == START.replace(tzinfo=None)
+
+
+def test_selected_feed_without_profile_fails_closed_on_broker_clock(feed_db):
+    from backend.data_quality.quality_engine import DataQualityEngine
+
+    engine = DataQualityEngine(feed_id=FEED_A)
+    engine.event_storage.save = lambda **kwargs: None
+
+    report = engine.run()
+
+    assert engine.provider is None
+    assert report["status"] == "FAIL"
+    assert any(
+        issue["check"] == "broker_clock"
+        and "No profile-bound" in issue["message"]
+        for issue in report["issues"]
+    )
+
+
+def test_quality_engine_binds_clock_provider_to_matching_profile(
+    feed_db, monkeypatch
+):
+    from backend.data_quality import quality_engine
+    from backend.data_quality.quality_engine import DataQualityEngine
+    from backend.runtime.stage7_universal_mt5_adapter import example_hfm_profile
+
+    profile = example_hfm_profile()
+    epoch = "SYNTHETIC_20261103_A"
+    feed_id = build_local_feed_identity(
+        profile, capture_epoch=epoch
+    )["feed_id"]
+    created = []
+
+    class BoundProvider:
+        def __init__(self, **kwargs):
+            created.append(kwargs)
+
+    monkeypatch.setattr(quality_engine, "MT5Provider", BoundProvider)
+
+    engine = DataQualityEngine(
+        feed_id=feed_id,
+        broker_profile=profile,
+        capture_epoch=epoch,
+    )
+
+    assert engine.provider.__class__ is BoundProvider
+    assert created == [{"broker_profile": profile}]
+
+
+def test_quality_engine_rejects_profile_that_does_not_match_feed(
+    feed_db, monkeypatch
+):
+    from backend.data_quality import quality_engine
+    from backend.data_quality.quality_engine import DataQualityEngine
+    from backend.runtime.stage7_universal_mt5_adapter import example_hfm_profile
+
+    def provider_must_not_be_created(**kwargs):
+        raise AssertionError("profile/feed mismatch must fail before provider")
+
+    monkeypatch.setattr(quality_engine, "MT5Provider", provider_must_not_be_created)
+
+    with pytest.raises(ValueError, match="does not match its profile and epoch"):
+        DataQualityEngine(
+            feed_id=FEED_A,
+            broker_profile=example_hfm_profile(),
+            capture_epoch="SYNTHETIC_20261103_A",
+        )
 
 
 @pytest.mark.parametrize("repository", [

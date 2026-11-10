@@ -90,6 +90,8 @@ class MarketStateEngine:
         timeframe_minutes=5,
         candle_limit=200,
         feed_id=None,
+        broker_profile=None,
+        capture_epoch=None,
     ):
 
         self.symbol = symbol
@@ -124,6 +126,8 @@ class MarketStateEngine:
 
                 lookback_hours=6,
                 feed_id=feed_id,
+                broker_profile=broker_profile,
+                capture_epoch=capture_epoch,
             )
         )
 

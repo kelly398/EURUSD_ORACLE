@@ -26,7 +26,10 @@ from backend.data_engine.mt5_provider import (
 from backend.data_quality.event_storage import (
     DataQualityEventStorage
 )
-from backend.data_engine.feed_identity import require_feed_id
+from backend.data_engine.feed_identity import (
+    build_local_feed_identity,
+    require_feed_id,
+)
 
 
 class DataQualityEngine:
@@ -38,6 +41,8 @@ class DataQualityEngine:
         timeframe_minutes=5,
         lookback_hours=6,
         feed_id=None,
+        broker_profile=None,
+        capture_epoch=None,
     ):
 
         self.symbol = symbol
@@ -54,15 +59,35 @@ class DataQualityEngine:
             require_feed_id(feed_id)
         self.feed_id = feed_id
 
+        if (broker_profile is None) != (capture_epoch is None):
+            raise ValueError(
+                "Broker profile and capture epoch must be supplied together."
+            )
+        if broker_profile is not None:
+            if feed_id is None:
+                raise ValueError(
+                    "A feed ID is required when binding a broker profile."
+                )
+            identity = build_local_feed_identity(
+                broker_profile,
+                capture_epoch=capture_epoch,
+            )
+            if identity["feed_id"] != feed_id:
+                raise ValueError(
+                    "Selected feed ID does not match its profile and epoch."
+                )
+            self.provider = MT5Provider(broker_profile=broker_profile)
+        elif feed_id is not None:
+            # A generic terminal clock could belong to another account. Keep
+            # this feed's quality result blocked until an explicit binding is
+            # supplied.
+            self.provider = None
+        else:
+            self.provider = MT5Provider()
+
         self.event_storage = (
             DataQualityEventStorage()
         )
-
-        # Live MT5 connection used only
-        # to obtain the authoritative
-        # current broker market clock.
-        self.provider = MT5Provider()
-
 
     def _issue(
         self,
@@ -226,7 +251,7 @@ class DataQualityEngine:
             broker_now = None
 
 
-            if self.provider.connect():
+            if self.provider is not None and self.provider.connect():
 
                 try:
 
@@ -255,12 +280,18 @@ class DataQualityEngine:
 
             if broker_now is None:
 
+                clock_issue = (
+                    "No profile-bound broker clock provider is configured "
+                    "for the selected feed."
+                    if self.feed_id is not None and self.provider is None
+                    else "Unable to obtain current MT5 broker timestamp."
+                )
+
                 self._issue(
                     report,
                     "broker_clock",
                     "CRITICAL",
-                    "Unable to obtain current "
-                    "MT5 broker timestamp."
+                    clock_issue
                 )
 
             else:
