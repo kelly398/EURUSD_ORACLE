@@ -3,13 +3,17 @@
 Updated: 2026-11-09
 
 This is the handoff note for the next development session. Read it together
-with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
-`docs/DP_M2D_FEED_SCOPED_READS_2026-11-09.md`, and
-`docs/DP_M2D_FEED_PROVENANCE_2026-11-09.md`, and
-`docs/DP_M2D_PROFILE_BOUND_CLOCK_2026-11-09.md`, and
-`docs/DP_M2D_FEED_REGISTRATION_2026-11-09.md`, and
-`docs/DP_M2D_FEED_CUTOVER_REHEARSAL_2026-11-09.md`, and
-`docs/DP_M2D_CUTOVER_SEQUENCE_2026-11-09.md`.
+with the architecture references and current DP-M2D records:
+
+- `docs/ORACLE_Implementation_Atlas_2026-10-30.pdf`
+- `docs/ORACLE_Future_Implementation_Masterplan_Stages_7_to_11_2026-10-30.pdf`
+- `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`
+- `docs/DP_M2D_FEED_SCOPED_READS_2026-11-09.md`
+- `docs/DP_M2D_FEED_PROVENANCE_2026-11-09.md`
+- `docs/DP_M2D_PROFILE_BOUND_CLOCK_2026-11-09.md`
+- `docs/DP_M2D_FEED_REGISTRATION_2026-11-09.md`
+- `docs/DP_M2D_FEED_CUTOVER_REHEARSAL_2026-11-09.md`
+- `docs/DP_M2D_CUTOVER_SEQUENCE_2026-11-09.md`
 
 ## Current position
 
@@ -32,6 +36,24 @@ with `docs/DATA_PIPELINE_MODERNIZATION_MILESTONES_2026-10-31.md`,
   are implemented and covered by focused tests. The DP-M2D.3 event-column
   migration was applied twice and passed strict postflight on
   `eurusd_oracle_local`.
+
+## Reference PDFs added
+
+- The Implementation Atlas and Stages 7-11 Masterplan are dated 2026-10-30.
+  Their baselines say Stage 5 / Stage 6 complete and propose P6 or P7 work as
+  the next action at that time. They are now historical/design references, not
+  an exact description of this later checkout.
+- This repository has since advanced through Stage 7/8/9/10/11 engineering
+  modules and the DP-M2D feed work listed below. Use this continuation report,
+  current Git history, and current code to determine implementation state.
+- Preserve the PDFs' useful boundaries: distinguish engineering completion
+  from independent operational acceptance, do not infer source admission from
+  local hashes or tests, keep the system `FINAL=HOLD`, and document tests,
+  commit, evidence limits, and the next dependency after each batch.
+- PDF SHA-256: `ORACLE_Implementation_Atlas_2026-10-30.pdf` is
+  `219b1e65dad67d6417dcc46e1fd1ccc9b0ec879ee895ff3a2d30c0e2905c71ab`;
+  `ORACLE_Future_Implementation_Masterplan_Stages_7_to_11_2026-10-30.pdf` is
+  `16d6d45e62cf43ef9d735065cdbf9ad3d60d6b853ed353df93c97c56e8d1adc9`.
 
 ## Implemented
 
